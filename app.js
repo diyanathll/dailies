@@ -1,4 +1,6 @@
 // ============ CONSTANTS ============
+const APP_DISPLAY_NAME='boneeps';
+try{document.title=APP_DISPLAY_NAME;}catch(e){}
 const MAX_ROKOK=5,WATER_TARGET=2.5,WATER_GLASS=0.25,WATER_GLASSES=10;
 const MOTIVASI=["Konsistensi > Motivasi. Lakuin aja, perasaan ikut nanti. 🔥","Orang sukses bukan yang paling berbakat — yang paling konsisten! 🏆","Satu kebiasaan kecil hari ini = kebiasaan besar 3 bulan lagi! 📈","Kamu bukan malas, kamu belum punya sistem. Sekarang kamu punya! ✅","Jangan compare sama orang lain. Compare sama kamu kemarin! 💪","Mulai dari yang kecil, tapi mulai sekarang. 🚀","Done is better than perfect. Selesai lebih baik dari sempurna! 🎯"];
 
@@ -238,6 +240,7 @@ function loadState(){
   // Auto move tomorrow -> today on date change
   autoMoveTasks();
   recalcStreak();
+  saveState();
 }
 
 function prodTaskSnapshot(t,sourceDate){
@@ -494,8 +497,8 @@ function renderWorkout(){
 function renderProductivity(){
   let html=``;
   html+=`<div class="info-box" style="font-size:12px;margin-bottom:12px">
-    Drag: pegang ikon <strong>☰</strong>, lalu geser ke <strong>Hari Ini</strong> atau <strong>Akan Dilakukan</strong>.<br>
-    Rule: <strong>Ide</strong> adalah inbox awal. Task dari Hari Ini/Akan Dilakukan tidak balik ke Ide.
+    Drag: pegang ikon <strong>☰</strong>, lalu geser task ke <strong>Hari Ini</strong> atau <strong>Akan Dilakukan</strong>.<br>
+    Tap kartu untuk edit detail. Centang hanya lewat kotak checklist.
   </div>`;
 
   // TODAY
@@ -510,14 +513,12 @@ function renderProductivity(){
   } else {
     state.todayTasks.forEach((t,i)=>{
       html+=`<div class="prod-item" data-prod-type="today" data-prod-index="${i}">
-        <div class="prod-item-main" onclick="toggleTodayTask(${i})">
-          <div class="prod-check ${t.done?'done':''}">${t.done?'✓':''}</div>
+        <div class="prod-item-main" onclick="openTodayDetail(${i})">
+          <button class="prod-check ${t.done?'done':''}" onclick="event.stopPropagation();toggleTodayTask(${i})" title="Tandai selesai">${t.done?'✓':''}</button>
           <div class="prod-text ${t.done?'done':''}">${escHtml(t.text)}</div>
           <button class="prod-drag-handle" data-drag-type="today" data-drag-index="${i}" onclick="event.stopPropagation()" title="Drag pindah">☰</button>
         </div>
         <div class="prod-actions">
-          <button class="prod-action-btn primary" onclick="openTodayDetail(${i})">Detail</button>
-          <button class="prod-action-btn primary" onclick="moveTodayToTomorrow(${i})">→ Rencana</button>
           <button class="prod-action-btn danger" onclick="deleteTodayTask(${i})">Hapus</button>
         </div>
       </div>`;
@@ -539,8 +540,6 @@ function renderProductivity(){
           <button class="prod-drag-handle" data-drag-type="pending" data-drag-index="${i}" onclick="event.stopPropagation()" title="Drag pindah">☰</button>
         </div>
         <div class="prod-actions">
-          <button class="prod-action-btn primary" onclick="movePendingToToday(${i})">Kerjakan Hari Ini</button>
-          <button class="prod-action-btn primary" onclick="movePendingToTomorrow(${i})">Jadwalkan</button>
           <button class="prod-action-btn danger" onclick="deletePendingTask(${i})">Hapus</button>
         </div>
       </div>`;
@@ -572,8 +571,6 @@ function renderProductivity(){
           <button class="prod-drag-handle" data-drag-type="tomorrow" data-drag-index="${i}" onclick="event.stopPropagation()" title="Drag pindah">☰</button>
         </div>
         <div class="prod-actions">
-          <button class="prod-action-btn primary" onclick="moveTomorrowToToday(${i})">→ Hari Ini</button>
-          <button class="prod-action-btn primary" onclick="openTomorrowDetail(${i})">Detail</button>
           <button class="prod-action-btn danger" onclick="deleteTomorrowTask(${i})">Hapus</button>
         </div>
       </div>`;
@@ -599,8 +596,6 @@ function renderProductivity(){
           <button class="prod-drag-handle" data-drag-type="idea" data-drag-index="${i}" onclick="event.stopPropagation()" title="Drag pindah">☰</button>
         </div>
         <div class="prod-actions">
-          <button class="prod-action-btn primary" onclick="moveIdeaToToday(${i})">→ Hari Ini</button>
-          <button class="prod-action-btn primary" onclick="moveIdeaToTomorrow(${i})">→ Rencana</button>
           <button class="prod-action-btn danger" onclick="deleteIdea(${i})">Hapus</button>
         </div>
       </div>`;
@@ -1237,6 +1232,10 @@ function onProdDragMove(e){
   e.preventDefault();
   prodDragState.moved=true;
   moveProdGhost(e.clientX,e.clientY);
+  // Mobile UX: allow scrolling while dragging near viewport edges.
+  // Without this, moving items between far sections on iPhone can feel blocked.
+  if(e.clientY<90) window.scrollBy({top:-14,left:0,behavior:'auto'});
+  else if(e.clientY>window.innerHeight-90) window.scrollBy({top:14,left:0,behavior:'auto'});
   clearProdDropMarks();
   const zone=getDropZoneAt(e.clientX,e.clientY);
   if(zone){
@@ -1419,7 +1418,7 @@ function exportBackup(){
     const exportedAt=new Date().toISOString();
     state.lastBackupAt=exportedAt;
     const payload={
-      app:'Kos Produktif',
+      app:'boneeps',
       version:6,
       storageKey:'kosProduktif5',
       exportedAt,
@@ -1429,7 +1428,7 @@ function exportBackup(){
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
-    a.download=`kos-produktif-backup-${todayKey()}.json`;
+    a.download=`boneeps-backup-${todayKey()}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -1454,7 +1453,7 @@ async function handleBackupFileSelect(event){
   try{
     const text=await file.text();
     const payload=JSON.parse(text);
-    if(!payload||payload.app!=='Kos Produktif'||!payload.data||typeof payload.data!=='object'){
+    if(!payload||!['Kos Produktif','boneeps'].includes(payload.app)||!payload.data||typeof payload.data!=='object'){
       showToast('❌ File backup tidak valid');
       return;
     }

@@ -1,6 +1,6 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --primary:#4f46e5;--primary-bg:#eef2ff;--primary-light:#818cf8;
+  --primary:#111111;--primary-bg:#f3f4f6;--primary-light:#525252;
   --green:#059669;--green-bg:#d1fae5;
   --orange:#d97706;--orange-bg:#fef3c7;
   --purple:#7c3aed;--purple-bg:#ede9fe;
@@ -20,7 +20,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 #app{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;padding-bottom:80px}
 
 /* HEADER */
-.header{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:white;padding:52px 20px 20px}
+.header{background:linear-gradient(135deg,#070707 0%,#262626 100%);color:white;padding:52px 20px 20px}
 .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .header-greeting{font-size:13px;opacity:.8;margin-bottom:2px}
 .header-name{font-size:22px;font-weight:800;letter-spacing:-.5px}
@@ -215,7 +215,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 /* PRODUCTIVITY */
 .prod-item{background:var(--card);border-radius:12px;box-shadow:var(--shadow);margin-bottom:8px;overflow:hidden}
 .prod-item-main{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.prod-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;font-size:12px}
+.prod-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;font-size:12px;background:white;padding:0;cursor:pointer;color:var(--text);font-family:inherit;-webkit-tap-highlight-color:transparent}
 .prod-check.done{background:var(--green);border-color:var(--green);color:white}
 .prod-text{flex:1;font-size:14px;font-weight:600;color:var(--text)}
 .prod-text.done{text-decoration:line-through;color:var(--text-3)}
@@ -257,3 +257,5 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 .prod-drag-handle:active{cursor:grabbing;transform:scale(.96)}
 .prod-drag-ghost{position:fixed;z-index:1000;pointer-events:none;opacity:.92;transform:rotate(1deg);box-shadow:var(--shadow-lg)}
 .prod-dragging{user-select:none;-webkit-user-select:none;cursor:grabbing}
+
+.header-brand-mark{width:44px;height:44px;border-radius:14px;border:2px solid rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;line-height:1;text-transform:lowercase;letter-spacing:-1px;background:rgba(255,255,255,.08)}
