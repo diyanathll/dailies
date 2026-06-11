@@ -271,20 +271,51 @@ function addScheduleWater(idx,glasses){
   addWaterEvent(key,glasses*WATER_GLASS,'schedule',{id,taskIndex:idx});
 }
 function removeScheduleWater(idx){removeWaterEventById(todayKey(),'schedule_'+idx);}
+function reduceOneWaterGlass(key=todayKey()){
+  ensureWaterEvents();
+  let events=getWaterEvents(key);
+  if(events.length>0){
+    // Reduce exactly 1 glass (0.25L) from the latest event, regardless of source.
+    // This also handles schedule water, including 0.5L schedule tasks.
+    for(let i=events.length-1;i>=0;i--){
+      const amt=Math.max(0,Number(events[i].amount)||0);
+      if(amt<=0) continue;
+      if(amt>WATER_GLASS){
+        events[i].amount=+(amt-WATER_GLASS).toFixed(2);
+      } else {
+        const removed=events.splice(i,1)[0];
+        if(removed?.source==='schedule'&&removed.taskIndex!==undefined){
+          const stillHasSchedule=events.some(e=>e.source==='schedule'&&e.taskIndex===removed.taskIndex&&(Number(e.amount)||0)>0);
+          if(!stillHasSchedule){
+            if(!state.checked[key]) state.checked[key]={};
+            state.checked[key][removed.taskIndex]=false;
+          }
+        }
+      }
+      state.waterEvents[key]=events;
+      syncWaterHistory(key);
+      return true;
+    }
+  }
+  // Legacy fallback: if old data had waterHistory only, decrement it safely to 0.
+  const cur=Math.max(0,Number(state.waterHistory?.[key]||0));
+  if(cur>0){
+    if(!state.waterHistory) state.waterHistory={};
+    state.waterHistory[key]=Math.max(0,cur-1);
+    return true;
+  }
+  return false;
+}
 function addManualWater(deltaGlasses){
   const key=todayKey();
   ensureWaterEvents();
   if(deltaGlasses>0){
     for(let i=0;i<deltaGlasses;i++) addWaterEvent(key,WATER_GLASS,'manual');
   } else if(deltaGlasses<0){
-    const events=getWaterEvents(key);
     for(let i=0;i<Math.abs(deltaGlasses);i++){
-      const manualIndex=[...events].map((e,idx)=>({e,idx})).filter(x=>x.e.source==='manual'||x.e.source==='manual-adjust'||x.e.source==='legacy').pop()?.idx;
-      if(manualIndex===undefined){showToast('Tidak ada air manual yang bisa dikurangi. Uncheck jadwal minum jika ingin mengurangi air dari jadwal.');break;}
-      events.splice(manualIndex,1);
+      const ok=reduceOneWaterGlass(key);
+      if(!ok){showToast('Air sudah 0L.');break;}
     }
-    state.waterEvents[key]=events;
-    syncWaterHistory(key);
   }
   saveState();
   const msg=getWaterStatusMessage(key);
@@ -294,13 +325,18 @@ function addManualWater(deltaGlasses){
 function setWaterTotalGlasses(targetGlasses){
   const key=todayKey();
   targetGlasses=Math.max(0,Math.round(targetGlasses));
-  const events=getWaterEvents(key).filter(e=>e.source==='schedule');
-  const scheduleGlasses=Math.round(events.reduce((a,e)=>a+(Number(e.amount)||0),0)/WATER_GLASS);
-  const manualGlasses=Math.max(0,targetGlasses-scheduleGlasses);
-  const manualEvents=[];
-  for(let i=0;i<manualGlasses;i++) manualEvents.push({id:'manual_adjust_'+Date.now()+'_'+i,amount:WATER_GLASS,source:'manual-adjust',createdAt:nowIso()});
   ensureWaterEvents();
-  state.waterEvents[key]=[...events,...manualEvents];
+  let cur=getWaterGlasses(key);
+  if(targetGlasses===cur) return;
+  while(cur>targetGlasses){
+    const ok=reduceOneWaterGlass(key);
+    if(!ok) break;
+    cur=getWaterGlasses(key);
+  }
+  while(cur<targetGlasses){
+    addWaterEvent(key,WATER_GLASS,'manual-adjust');
+    cur=getWaterGlasses(key);
+  }
   syncWaterHistory(key);
   saveState();
   showToast(getWaterStatusMessage(key).short);
@@ -488,10 +524,7 @@ function renderHeader(){
   const pct=progressPct();
   document.getElementById('progressBar').style.width=pct+'%';
   document.getElementById('progressLabel').textContent=completedCount()+'/'+SCHEDULE_TODAY.length+' task ('+pct+'%)';
-  const wg=todayWater();
-  const wl=getWaterLiters().toFixed(2);
-  document.getElementById('waterHeaderBar').style.width=Math.min(100,(wg/WATER_GLASSES)*100)+'%';
-  document.getElementById('waterHeaderVal').textContent=wl+'L / '+WATER_TARGET+'L';
+  // Header is intentionally focused on streak + checklist percentage only.
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   const n=document.getElementById('nav-'+state.tab);if(n)n.classList.add('active');
 }
@@ -526,18 +559,18 @@ function renderSchedule(){
     </div>
     <div class="water-track-wrap"><div class="water-track-bar" style="width:${wpct}%"></div></div>
     ${waterOver>0?`<div class="water-over-label">+${waterOver.toFixed(2)}L di atas target</div>`:''}
+    ${wg>=WATER_GLASSES?`<div class="water-quick-controls">
+      <button class="water-control-btn" onclick="addManualWater(-1)">−</button>
+      <div class="water-control-mid">Target penuh — tambah/kurangi 0.25L</div>
+      <button class="water-control-btn primary" onclick="addManualWater(1)">+</button>
+    </div>`:''}
     <div class="water-glasses">`;
   for(let i=0;i<waterGlassCount;i++){
     html+=`<div class="water-glass ${i<wg?'filled':''}" onclick="toggleWaterGlass(${i})">${i<wg?'💧':'○'}</div>`;
   }
   html+=`</div>
-    <div class="water-controls">
-      <button class="water-control-btn" onclick="addManualWater(-1)">−</button>
-      <div class="water-control-mid">Manual 0.25L</div>
-      <button class="water-control-btn primary" onclick="addManualWater(1)">+</button>
-    </div>
     <div class="water-status water-status-${waterStatus.level}">${waterStatus.long}</div>
-    <p style="font-size:11px;color:var(--text-3);margin-top:8px;text-align:center">Tap gelas atau tombol +/− • 1 gelas = 0.25L • jadwal minum ikut tercatat otomatis</p>
+    <p style="font-size:11px;color:var(--text-3);margin-top:8px;text-align:center">Tap gelas untuk atur air • tombol +/− muncul setelah 2.5L penuh • 1 gelas = 0.25L</p>
   </div>`;
 
   const groups=[
@@ -1042,16 +1075,75 @@ function renderBookTracker(){
   return html;
 }
 
+
+function getBookReadingModel(b){
+  const raw=Array.isArray(b.sessions)?b.sessions:[];
+  if(raw.length===0){
+    const cp=Math.max(0,Math.min(Number(b.currentPage||0),Number(b.totalPages||0)||Infinity));
+    return {sessions:[],readSessions:[],totalRead:cp,currentPage:cp};
+  }
+  let cur=0;
+  const out=[];
+  raw.forEach(s=>{
+    const date=s.date||todayKey();
+    let to=Number(s.to);
+    if(!Number.isFinite(to)) return;
+    to=Math.max(0,Math.min(to,Number(b.totalPages||to)));
+    if(s.type==='correction'){
+      const last=out[out.length-1];
+      if(last&&last.type==='read'&&cur===last.to&&to>=last.from){
+        last.to=to;
+        last.pages=Math.max(0,to-last.from);
+        last.corrected=true;
+        cur=to;
+        if(last.pages<=0) out.pop();
+      } else {
+        cur=to;
+      }
+      return;
+    }
+    // Read sessions are canonicalized from the current effective page.
+    if(to>cur){
+      out.push({date,from:cur,to,pages:to-cur,type:'read',corrected:!!s.corrected});
+      cur=to;
+    } else if(to<cur){
+      const last=out[out.length-1];
+      if(last&&last.type==='read'&&cur===last.to&&to>=last.from){
+        last.to=to;
+        last.pages=Math.max(0,to-last.from);
+        last.corrected=true;
+        cur=to;
+        if(last.pages<=0) out.pop();
+      } else {
+        cur=to;
+      }
+    }
+  });
+  const readSessions=out.filter(s=>s.type==='read'&&s.pages>0);
+  const totalRead=readSessions.reduce((a,s)=>a+Number(s.pages||0),0);
+  return {sessions:out,readSessions,totalRead,currentPage:cur};
+}
+function canonicalizeBookSessions(b){
+  if(!b) return null;
+  const model=getBookReadingModel(b);
+  if(Array.isArray(b.sessions)&&JSON.stringify(b.sessions)!==JSON.stringify(model.sessions)){
+    b.sessions=model.sessions;
+  }
+  b.currentPage=model.currentPage;
+  return model;
+}
+
 function renderBookDetail(bookId){
   const b=(state.books||[]).find(x=>x.id===bookId);
   if(!b) return '<p>Buku tidak ditemukan.</p>';
   if(!Array.isArray(b.sessions)) b.sessions=[];
-  const pct=Math.round((b.currentPage/b.totalPages)*100);
-  const remaining=b.totalPages-b.currentPage;
-  const sessions=b.sessions||[];
-  const readSessions=sessions.filter(s=>s.type!=='correction');
-  const effectiveRead=b.finished?Number(b.totalPages||0):Number(b.currentPage||0);
-  const avgPerSession=readSessions.length>0?(effectiveRead/readSessions.length).toFixed(1):0;
+  const model=canonicalizeBookSessions(b);
+  const pct=Math.round((Number(b.currentPage||0)/Number(b.totalPages||1))*100);
+  const remaining=Math.max(0,Number(b.totalPages||0)-Number(b.currentPage||0));
+  const sessions=model.sessions;
+  const readSessions=model.readSessions;
+  const totalRead=model.totalRead;
+  const avgPerSession=readSessions.length>0?(totalRead/readSessions.length).toFixed(1):0;
 
   let html=`<div class="book-detail">
     <div class="book-detail-title">${escHtml(b.title)}</div>
@@ -1064,8 +1156,9 @@ function renderBookDetail(bookId){
   <div class="page-input-row">
     <input class="input-field sm" id="pageUpdateInput" type="number" placeholder="Halaman sekarang..." min="0" max="${b.totalPages}" value="${b.currentPage}" style="flex:1">
     <button class="btn btn-primary btn-sm" onclick="updateBookPage('${b.id}')">Update</button>
+    <button class="btn btn-ghost btn-sm" onclick="correctBookPage('${b.id}')">Koreksi</button>
   </div>
-  <p style="font-size:11px;color:var(--text-3);line-height:1.5;margin:-2px 0 12px">Input turun akan dianggap <strong>koreksi halaman</strong> dan tidak dihitung sebagai sesi baca.</p>
+  <p style="font-size:11px;color:var(--text-3);line-height:1.5;margin:-2px 0 12px">Update normal hanya menerima halaman naik. Kalau angka turun karena benar-benar salah catat progress, pakai <strong>Koreksi</strong>.</p>
   <div style="display:flex;gap:8px;margin-bottom:16px">
     <button class="btn btn-ghost btn-sm" style="flex:1" onclick="finishBook('${b.id}')">✅ Tandai Selesai</button>
     <button class="btn btn-danger btn-sm" style="flex:1" onclick="deleteBook('${b.id}')">🗑️ Hapus</button>
@@ -1073,17 +1166,16 @@ function renderBookDetail(bookId){
   <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-2)">Statistik Baca</div>
   <div class="prod-stat-row">
     <div class="prod-stat-card"><div class="prod-stat-val">${readSessions.length}</div><div class="prod-stat-label">Sesi Baca</div></div>
-    <div class="prod-stat-card"><div class="prod-stat-val">${avgPerSession}</div><div class="prod-stat-label">Rata-rata Efektif Hal/Sesi</div></div>
+    <div class="prod-stat-card"><div class="prod-stat-val">${avgPerSession}</div><div class="prod-stat-label">Rata-rata Hal/Sesi</div></div>
   </div>`;
 
   if(sessions.length>0){
     html+=`<div class="card"><div class="card-body">`;
     sessions.slice(-10).reverse().forEach(s=>{
-      const isCorrection=s.type==='correction';
       html+=`<div class="history-row">
         <div class="history-date" style="font-size:11px">${s.date}</div>
-        <div style="flex:1;margin:0 10px;font-size:13px;color:var(--text-2)">${isCorrection?'Koreksi: ':''}Hal ${s.from} → ${s.to}${isCorrection?'<br><span style="font-size:11px;color:var(--text-3)">Tidak dihitung sebagai sesi baca</span>':''}</div>
-        <div style="font-size:12px;font-weight:700;color:${isCorrection?'var(--orange)':'var(--primary)'}">${isCorrection?'Koreksi':'+'+s.pages+' hal'}</div>
+        <div style="flex:1;margin:0 10px;font-size:13px;color:var(--text-2)">Hal ${s.from} → ${s.to}${s.corrected?'<br><span style="font-size:11px;color:var(--orange)">Sesi ini sudah dikoreksi</span>':''}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--primary)">+${s.pages} hal</div>
       </div>`;
     });
     html+=`</div></div>`;
@@ -1092,6 +1184,7 @@ function renderBookDetail(bookId){
   html+=`<button class="btn btn-ghost" style="width:100%;margin-top:4px" onclick="openBookList()">← Kembali ke Daftar Buku</button>`;
   return html;
 }
+
 
 function renderBookStats(){
   const finished=(state.books||[]).filter(b=>b.finished);
@@ -1235,29 +1328,54 @@ function updateBookPage(bookId){
   const b=(state.books||[]).find(x=>x.id===bookId);
   if(!b) return;
   if(!Array.isArray(b.sessions)) b.sessions=[];
+  canonicalizeBookSessions(b);
   const newPage=parseInt(document.getElementById('pageUpdateInput')?.value);
   if(isNaN(newPage)||newPage<0||newPage>b.totalPages){showToast('❌ Halaman tidak valid!');return;}
   const oldPage=Number(b.currentPage||0);
   if(newPage===oldPage){showToast('Tidak ada perubahan halaman.');return;}
   if(newPage<oldPage){
-    const ok=confirm(`Halaman baru (${newPage}) lebih kecil dari progress sekarang (${oldPage}).\n\nCatat sebagai KOREKSI HALAMAN?\nKoreksi tidak dihitung sebagai sesi baca.`);
-    if(!ok) return;
-    b.sessions.push({date:todayKey(),from:oldPage,to:newPage,pages:0,type:'correction'});
-    b.currentPage=newPage;
-    showToast('↩️ Koreksi halaman disimpan.');
-  } else {
-    const pages=newPage-oldPage;
-    b.sessions.push({date:todayKey(),from:oldPage,to:newPage,pages,type:'read'});
-    b.currentPage=newPage;
-    showToast('📖 +'+pages+' halaman dibaca!');
+    showToast(`Input ${newPage} lebih kecil dari progress ${oldPage}; tidak disimpan. Pakai Koreksi jika memang salah catat.`);
+    const inp=document.getElementById('pageUpdateInput');
+    if(inp) inp.value=oldPage;
+    return;
   }
+  const pages=newPage-oldPage;
+  b.sessions.push({date:todayKey(),from:oldPage,to:newPage,pages,type:'read'});
+  b.currentPage=newPage;
+  showToast('📖 +'+pages+' halaman dibaca!');
   if(newPage>=b.totalPages){
     b.finished=true;b.finishedDate=todayKey();
-    showToast('🎉 Buku selesai! Keren banget!');
+    showToast('🎉 Buku selesai!');
     state.activeBookId=null;
   }
   saveState();updateFloats();refreshBookPopup();
 }
+function correctBookPage(bookId){
+  const b=(state.books||[]).find(x=>x.id===bookId);
+  if(!b) return;
+  if(!Array.isArray(b.sessions)) b.sessions=[];
+  canonicalizeBookSessions(b);
+  const newPage=parseInt(document.getElementById('pageUpdateInput')?.value);
+  if(isNaN(newPage)||newPage<0||newPage>b.totalPages){showToast('❌ Halaman tidak valid!');return;}
+  const oldPage=Number(b.currentPage||0);
+  if(newPage===oldPage){showToast('Tidak ada perubahan halaman.');return;}
+  if(newPage>oldPage){showToast('Untuk halaman naik, pakai Update.');return;}
+  const ok=confirm(`Koreksi progress buku dari halaman ${oldPage} ke ${newPage}?\n\nGunakan ini hanya kalau progress sebelumnya memang salah catat. Ini akan mengubah sesi baca terakhir dan tidak menambah sesi baru.`);
+  if(!ok) return;
+  const lastRead=[...b.sessions].map((x,idx)=>({x,idx})).filter(v=>v.x.type==='read').pop();
+  if(lastRead&&newPage>=Number(lastRead.x.from||0)){
+    lastRead.x.to=newPage;
+    lastRead.x.pages=Math.max(0,newPage-Number(lastRead.x.from||0));
+    lastRead.x.corrected=true;
+    if(lastRead.x.pages<=0) b.sessions.splice(lastRead.idx,1);
+  } else {
+    b.sessions.push({date:todayKey(),from:oldPage,to:newPage,pages:0,type:'correction'});
+  }
+  b.currentPage=newPage;
+  canonicalizeBookSessions(b);
+  saveState();updateFloats();refreshBookPopup();showToast('↩️ Koreksi progress disimpan.');
+}
+
 function finishBook(bookId){
   const b=(state.books||[]).find(x=>x.id===bookId);
   if(!b) return;
