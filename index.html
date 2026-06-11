@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Kos Produktif">
+<meta name="theme-color" content="#4f46e5">
+<title>Kos Produktif</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div class="header-greeting">Selamat datang,</div>
+        <div class="header-name" id="headerName">Bos</div>
+        <div class="header-date" id="headerDate"></div>
+      </div>
+      <div class="header-icon">🏠</div>
+    </div>
+    <div class="streak-badge">🔥 <span id="streakVal">0</span> hari streak</div>
+    <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+    <div class="progress-label" id="progressLabel">0/0 task selesai</div>
+    <div class="water-header">
+      <span style="font-size:16px">💧</span>
+      <span style="font-size:12px;opacity:.9;flex:none">Air</span>
+      <div class="water-header-bar-wrap"><div class="water-header-bar" id="waterHeaderBar" style="width:0%"></div></div>
+      <span style="font-size:12px;font-weight:800" id="waterHeaderVal">0.00L / 2.5L</span>
+    </div>
+  </div>
+  <div class="content" id="content"></div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="switchTab('schedule')" id="nav-schedule"><span class="nav-icon">📅</span><span class="nav-label">Jadwal</span></button>
+    <button class="nav-btn" onclick="switchTab('skincare')" id="nav-skincare"><span class="nav-icon">✨</span><span class="nav-label">Skincare</span></button>
+    <button class="nav-btn" onclick="switchTab('workout')" id="nav-workout"><span class="nav-icon">💪</span><span class="nav-label">Workout</span></button>
+    <button class="nav-btn" onclick="switchTab('productivity')" id="nav-productivity"><span class="nav-icon">🎯</span><span class="nav-label">Produktif</span></button>
+    <button class="nav-btn" onclick="switchTab('stats')" id="nav-stats"><span class="nav-icon">📊</span><span class="nav-label">Statistik</span></button>
+  </nav>
+</div>
+
+<!-- Float Buttons -->
+<div class="float-stack">
+  <button class="float-btn float-btn-book" onclick="toggleBookPopup()" id="floatBookBtn">
+    📚<span class="float-badge float-badge-blue" id="floatBookBadge">0</span>
+  </button>
+  <button class="float-btn float-btn-rokok" onclick="toggleRokokPopup()" id="floatRokokBtn">
+    🚬<span class="float-badge float-badge-green" id="floatRokokBadge">0</span>
+  </button>
+</div>
+
+<!-- ROKOK OVERLAY -->
+<div class="overlay" id="rokokOverlay" onclick="closeOverlayOnBg(event,'rokokOverlay')">
+  <div class="bottom-sheet">
+    <div class="sheet-header">
+      <div class="sheet-drag"></div>
+      <div class="sheet-title">🚬 Tracker Rokok</div>
+      <div class="sheet-sub">Batas harian: <strong>5 batang</strong> • Tap + setiap kali merokok</div>
+    </div>
+    <div class="sheet-body">
+      <div class="rokok-counter">
+        <button class="rokok-btn" style="background:var(--red-bg);color:var(--red)" onclick="changeRokok(-1)">−</button>
+        <div class="rokok-num" id="rokokNum">0</div>
+        <button class="rokok-btn" style="background:var(--green-bg);color:var(--green)" onclick="changeRokok(1)">+</button>
+      </div>
+      <div class="rokok-dots" id="rokokDots"></div>
+      <div style="font-size:14px;font-weight:700;text-align:center;margin-bottom:16px" id="rokokStatus"></div>
+      <button class="btn btn-ghost" style="width:100%" onclick="toggleRokokPopup()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOOK OVERLAY -->
+<div class="overlay" id="bookOverlay" onclick="closeOverlayOnBg(event,'bookOverlay')">
+  <div class="bottom-sheet">
+    <div class="sheet-header">
+      <div class="sheet-drag"></div>
+      <div class="sheet-title">📚 Reading Tracker</div>
+
+    </div>
+    <div class="sheet-body" id="bookSheetBody"></div>
+  </div>
+</div>
+
+<!-- PRODUCTIVITY DETAIL OVERLAY -->
+<div class="overlay" id="prodDetailOverlay" onclick="closeOverlayOnBg(event,'prodDetailOverlay')">
+  <div class="bottom-sheet">
+    <div class="sheet-header">
+      <div class="sheet-drag"></div>
+      <div class="sheet-title" id="prodDetailTitle">Detail Task</div>
+    </div>
+    <div class="sheet-body" id="prodDetailBody"></div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">⚠️ Hapus Semua Data</div>
+    <div class="confirm-sub">Tindakan ini tidak bisa dibatalkan. Semua riwayat, streak, dan data akan terhapus permanen.<br><br>Ketik <strong>HAPUS</strong> untuk konfirmasi:</div>
+    <input class="input-field" id="confirmInput" type="text" placeholder="Ketik HAPUS...">
+    <div class="confirm-btns">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeConfirm()">Batal</button>
+      <button class="btn btn-danger" style="flex:1" onclick="executeResetAll()">Hapus Sekarang</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="./app.js" defer></script>
+</body>
+</html>
