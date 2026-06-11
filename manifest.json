@@ -1,13 +1,13 @@
 {
-  "name": "Kos Produktif",
-  "short_name": "KosProduktif",
-  "description": "Daily routine tracker anak kos",
+  "name": "boneeps",
+  "short_name": "boneeps",
+  "description": "Personal productivity and routine tracker",
   "id": "./",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#4f46e5",
+  "background_color": "#070707",
+  "theme_color": "#070707",
   "orientation": "portrait",
   "icons": [
     {

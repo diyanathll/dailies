@@ -1,4 +1,4 @@
-const CACHE_NAME='kos-produktif-v9';
+const CACHE_NAME='boneeps-v10';
 const APP_SHELL=[
   './',
   './index.html',
@@ -7,7 +7,8 @@ const APP_SHELL=[
   './manifest.json',
   './icons/apple-touch-icon.png',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './icons/favicon-32.png'
 ];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)));
