@@ -191,12 +191,16 @@ let state={
   books:[],
   activeBookId:null,
   bookTab:'tracker',
+  bookFinishedShown:5,
   // Productivity
   prodTab:'tasks',
-  todayTasks:[],        // {id,text,done,createdAt}
+  todayTasks:[],        // {id,text,done,createdAt,detail,completedAt}
+  pendingTasks:[],      // {id,text,detail,sourceDate,createdAt}
   tomorrowTasks:[],     // {id,text,detail,dueDate,done}
   ideas:[],             // {id,text,detail,createdAt}
-  prodHistory:{},       // {YYYY-MM-DD: {done:n,total:n}}
+  prodHistory:{},       // {YYYY-MM-DD: {done:n,total:n,tasks:[...]}}
+  prodStatsPeriod:'7',  // 7 | 30 | lifetime
+  prodHistoryShown:5,
   lastProdDate:'',
   lastBackupAt:'',
 };
@@ -225,32 +229,74 @@ function loadState(){
   if(!state.ideas) state.ideas=[];
   if(!state.tomorrowTasks) state.tomorrowTasks=[];
   if(!state.todayTasks) state.todayTasks=[];
+  if(!state.pendingTasks) state.pendingTasks=[];
   if(!state.prodHistory) state.prodHistory={};
+  if(!state.prodStatsPeriod) state.prodStatsPeriod='7';
+  if(!state.prodHistoryShown) state.prodHistoryShown=5;
   if(!state.lastBackupAt) state.lastBackupAt='';
+  if(!state.bookFinishedShown) state.bookFinishedShown=5;
   // Auto move tomorrow -> today on date change
   autoMoveTasks();
   recalcStreak();
 }
 
+function prodTaskSnapshot(t,sourceDate){
+  return {
+    id:t.id||'',
+    text:t.text||'',
+    detail:t.detail||'',
+    done:!!t.done,
+    createdAt:t.createdAt||sourceDate||'',
+    completedAt:t.done?(t.completedAt||sourceDate||''):'',
+    sourceDate:sourceDate||t.sourceDate||''
+  };
+}
+function getProdRecordForDate(k){
+  const today=todayKey();
+  if(k===today){
+    const tasks=(state.todayTasks||[]).map(t=>prodTaskSnapshot(t,today));
+    return {done:tasks.filter(t=>t.done).length,total:tasks.length,tasks};
+  }
+  const rec=(state.prodHistory||{})[k]||{done:0,total:0,tasks:[]};
+  return {
+    done:rec.done||0,
+    total:rec.total||0,
+    tasks:Array.isArray(rec.tasks)?rec.tasks:[]
+  };
+}
+function prodRecordPct(rec){return rec.total>0?Math.round((rec.done/rec.total)*100):0;}
+
 function autoMoveTasks(){
   const today=todayKey();
   if(state.lastProdDate===today) return;
+  if(!state.pendingTasks) state.pendingTasks=[];
 
-  // 1) Simpan histori produktivitas dari hari terakhir sebelum task hari ini di-reset.
+  // Saat hari berganti: simpan detail task kemarin, lalu pindahkan task belum selesai ke Task Tertunda.
   if(state.lastProdDate&&state.lastProdDate!==today){
-    const doneCnt=(state.todayTasks||[]).filter(t=>t.done).length;
-    const totalCnt=(state.todayTasks||[]).length;
-    if(totalCnt>0) state.prodHistory[state.lastProdDate]={done:doneCnt,total:totalCnt};
+    const oldTasks=(state.todayTasks||[]).map(t=>prodTaskSnapshot(t,state.lastProdDate));
+    const doneCnt=oldTasks.filter(t=>t.done).length;
+    const totalCnt=oldTasks.length;
+    if(totalCnt>0){
+      state.prodHistory[state.lastProdDate]={done:doneCnt,total:totalCnt,tasks:oldTasks};
+    }
+    const undone=oldTasks.filter(t=>!t.done).map((t,idx)=>({
+      id:'pd_'+Date.now()+'_'+idx,
+      text:t.text,
+      detail:t.detail||'',
+      sourceDate:state.lastProdDate,
+      createdAt:t.createdAt||state.lastProdDate
+    }));
+    if(undone.length>0) state.pendingTasks=[...state.pendingTasks,...undone];
     state.todayTasks=[];
   }
 
-  // 2) Setelah reset, baru pindahkan rencana yang punya dueDate hari ini/terlewat.
+  // Setelah reset, baru pindahkan rencana yang punya dueDate hari ini/terlewat.
   // Task tanpa dueDate tetap di "Akan Dilakukan" agar tidak hilang/masuk otomatis.
   const carry=[];
   const moved=[];
   (state.tomorrowTasks||[]).forEach(t=>{
     if(t.dueDate&&t.dueDate<=today){
-      moved.push({...t,done:false,movedAt:today});
+      moved.push({...t,done:false,createdAt:today,movedAt:today});
     } else {
       carry.push(t);
     }
@@ -447,6 +493,10 @@ function renderWorkout(){
 // ============ PRODUCTIVITY ============
 function renderProductivity(){
   let html=``;
+  html+=`<div class="info-box" style="font-size:12px;margin-bottom:12px">
+    Drag: pegang ikon <strong>☰</strong>, lalu geser ke <strong>Hari Ini</strong> atau <strong>Akan Dilakukan</strong>.<br>
+    Rule: <strong>Ide</strong> adalah inbox awal. Task dari Hari Ini/Akan Dilakukan tidak balik ke Ide.
+  </div>`;
 
   // TODAY
   html+=`<div class="section-label">📌 Harus Dilakukan Hari Ini</div>`;
@@ -454,19 +504,44 @@ function renderProductivity(){
     <input class="input-field sm" id="todayInput" placeholder="Tambah task hari ini..." style="flex:1">
     <button class="btn btn-primary btn-sm" onclick="addTodayTask()">+</button>
   </div>`;
+  html+=`<div class="prod-drop-zone" data-prod-zone="today">`;
   if(!state.todayTasks||state.todayTasks.length===0){
-    html+=`<div class="no-items">Belum ada task hari ini.<br>Tambah di atas! 🎯</div>`;
+    html+=`<div class="no-items">Belum ada task hari ini.<br>Tambah di atas atau drag dari Ide/Akan Dilakukan.</div>`;
   } else {
     state.todayTasks.forEach((t,i)=>{
-      html+=`<div class="prod-item">
+      html+=`<div class="prod-item" data-prod-type="today" data-prod-index="${i}">
         <div class="prod-item-main" onclick="toggleTodayTask(${i})">
           <div class="prod-check ${t.done?'done':''}">${t.done?'✓':''}</div>
           <div class="prod-text ${t.done?'done':''}">${escHtml(t.text)}</div>
+          <button class="prod-drag-handle" data-drag-type="today" data-drag-index="${i}" onclick="event.stopPropagation()" title="Drag pindah">☰</button>
         </div>
         <div class="prod-actions">
           <button class="prod-action-btn primary" onclick="openTodayDetail(${i})">Detail</button>
-          <button class="prod-action-btn primary" onclick="moveToIdea(${i},'today')">→ Ide</button>
+          <button class="prod-action-btn primary" onclick="moveTodayToTomorrow(${i})">→ Rencana</button>
           <button class="prod-action-btn danger" onclick="deleteTodayTask(${i})">Hapus</button>
+        </div>
+      </div>`;
+    });
+  }
+  html+=`</div>`;
+
+  // PENDING
+  html+=`<div class="section-label" style="margin-top:24px">⏳ Task Tertunda</div>`;
+  if(!state.pendingTasks||state.pendingTasks.length===0){
+    html+=`<div class="no-items">Tidak ada task tertunda.<br>Bagus — backlog masih bersih.</div>`;
+  } else {
+    state.pendingTasks.forEach((t,i)=>{
+      html+=`<div class="prod-item" data-prod-type="pending" data-prod-index="${i}">
+        <div class="prod-item-main" onclick="openPendingDetail(${i})">
+          <div style="width:22px;height:22px;border-radius:6px;border:2px solid var(--orange);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;background:var(--orange-bg)">⏳</div>
+          <div class="prod-text" style="flex:1">${escHtml(t.text)}</div>
+          <span class="prod-badge prod-badge-nodate">Dari ${t.sourceDate||'-'}</span>
+          <button class="prod-drag-handle" data-drag-type="pending" data-drag-index="${i}" onclick="event.stopPropagation()" title="Drag pindah">☰</button>
+        </div>
+        <div class="prod-actions">
+          <button class="prod-action-btn primary" onclick="movePendingToToday(${i})">Kerjakan Hari Ini</button>
+          <button class="prod-action-btn primary" onclick="movePendingToTomorrow(${i})">Jadwalkan</button>
+          <button class="prod-action-btn danger" onclick="deletePendingTask(${i})">Hapus</button>
         </div>
       </div>`;
     });
@@ -478,8 +553,9 @@ function renderProductivity(){
     <input class="input-field sm" id="tomorrowInput" placeholder="Tambah rencana..." style="flex:1">
     <button class="btn btn-primary btn-sm" onclick="addTomorrowTask()">+</button>
   </div>`;
+  html+=`<div class="prod-drop-zone" data-prod-zone="tomorrow">`;
   if(!state.tomorrowTasks||state.tomorrowTasks.length===0){
-    html+=`<div class="no-items">Belum ada rencana.<br>Isi sebelum tidur untuk besok! 🌙</div>`;
+    html+=`<div class="no-items">Belum ada rencana.<br>Isi sebelum tidur atau drag dari Ide/Hari Ini.</div>`;
   } else {
     state.tomorrowTasks.forEach((t,i)=>{
       const noDate=!t.dueDate;
@@ -488,20 +564,22 @@ function renderProductivity(){
       if(noDate) badge=`<span class="prod-badge prod-badge-nodate">❗ Tanpa tanggal</span>`;
       else if(isPast) badge=`<span class="prod-badge prod-badge-nodate">⚠️ Terlambat</span>`;
       else badge=`<span class="prod-badge prod-badge-date">📅 ${t.dueDate}</span>`;
-      html+=`<div class="prod-item">
+      html+=`<div class="prod-item" data-prod-type="tomorrow" data-prod-index="${i}">
         <div class="prod-item-main" onclick="openTomorrowDetail(${i})">
           <div style="width:22px;height:22px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">🗓</div>
           <div class="prod-text" style="flex:1">${escHtml(t.text)}</div>
           ${badge}
+          <button class="prod-drag-handle" data-drag-type="tomorrow" data-drag-index="${i}" onclick="event.stopPropagation()" title="Drag pindah">☰</button>
         </div>
         <div class="prod-actions">
           <button class="prod-action-btn primary" onclick="moveTomorrowToToday(${i})">→ Hari Ini</button>
-          <button class="prod-action-btn primary" onclick="moveToIdea(${i},'tomorrow')">→ Ide</button>
+          <button class="prod-action-btn primary" onclick="openTomorrowDetail(${i})">Detail</button>
           <button class="prod-action-btn danger" onclick="deleteTomorrowTask(${i})">Hapus</button>
         </div>
       </div>`;
     });
   }
+  html+=`</div>`;
 
   // IDEAS
   html+=`<div class="section-label" style="margin-top:24px">💡 Tempat Ide</div>`;
@@ -513,11 +591,12 @@ function renderProductivity(){
     html+=`<div class="no-items">Belum ada ide tersimpan.<br>Tulis sebelum lupa! 💡</div>`;
   } else {
     state.ideas.forEach((t,i)=>{
-      html+=`<div class="prod-item">
+      html+=`<div class="prod-item" data-prod-type="idea" data-prod-index="${i}">
         <div class="prod-item-main" onclick="openIdeaDetail(${i})">
           <div style="font-size:18px;flex-shrink:0">💡</div>
           <div class="prod-text">${escHtml(t.text)}</div>
           <span style="font-size:10px;color:var(--text-3);flex-shrink:0">${t.createdAt?t.createdAt.slice(5):''}</span>
+          <button class="prod-drag-handle" data-drag-type="idea" data-drag-index="${i}" onclick="event.stopPropagation()" title="Drag pindah">☰</button>
         </div>
         <div class="prod-actions">
           <button class="prod-action-btn primary" onclick="moveIdeaToToday(${i})">→ Hari Ini</button>
@@ -530,7 +609,6 @@ function renderProductivity(){
 
   return html;
 }
-
 
 // ============ STATS ============
 function renderStats(){
@@ -620,36 +698,55 @@ function renderStats(){
     <span>🎯 Produktif</span><span>${pa?'▲':'▼'}</span>
   </button>`;
   if(pa){
-    const ph=state.prodHistory||{};
+    const prodPeriod=state.prodStatsPeriod||'7';
     const td2=todayKey();
-    const todayDone2=(state.todayTasks||[]).filter(t=>t.done).length;
-    const todayTotal2=(state.todayTasks||[]).length;
-    const week7=[td2,...Array.from({length:6},(_,i)=>addDaysKey(td2,-i-1))];
-    const w7Done=week7.reduce((a,k)=>a+(k===td2?todayDone2:(ph[k]?.done||0)),0);
-    const w7Total=week7.reduce((a,k)=>a+(k===td2?todayTotal2:(ph[k]?.total||0)),0);
-    const lifeDone2=Object.values(ph).reduce((a,b)=>a+(b.done||0),0)+todayDone2;
-    const lifeTotal2=Object.values(ph).reduce((a,b)=>a+(b.total||0),0)+todayTotal2;
+    const allProdKeys=[...new Set([td2,...Object.keys(state.prodHistory||{})])].sort().reverse();
+    const periodProdKeys=allProdKeys.filter(k=>{
+      if(prodPeriod==='7') return k>=addDaysKey(td2,-6);
+      if(prodPeriod==='30') return k>=addDaysKey(td2,-29);
+      return true;
+    });
+    const prodRecords=periodProdKeys.map(k=>({k,rec:getProdRecordForDate(k)})).filter(x=>x.rec.total>0);
+    const prodDone=prodRecords.reduce((a,x)=>a+x.rec.done,0);
+    const prodTotal=prodRecords.reduce((a,x)=>a+x.rec.total,0);
+    const prodAvg=prodRecords.length>0?Math.round(prodRecords.reduce((a,x)=>a+prodRecordPct(x.rec),0)/prodRecords.length):0;
+    const prodDays=prodRecords.length;
+    const shownProd=state.prodHistoryShown||5;
+    const displayProd=prodRecords.slice(0,shownProd);
     html+=`<div class="accordion-body">
-      <div class="prod-stat-row">
-        <div class="prod-stat-card"><div class="prod-stat-val">${todayDone2}/${todayTotal2}</div><div class="prod-stat-label">Selesai Hari Ini</div></div>
-        <div class="prod-stat-card"><div class="prod-stat-val">${w7Done}</div><div class="prod-stat-label">Selesai 7 Hari</div></div>
+      <div class="stats-period-row" style="margin-bottom:12px">
+        <button class="period-btn ${prodPeriod==='7'?'active':''}" onclick="setProdStatsPeriod('7')">7 Hari</button>
+        <button class="period-btn ${prodPeriod==='30'?'active':''}" onclick="setProdStatsPeriod('30')">30 Hari</button>
+        <button class="period-btn ${prodPeriod==='lifetime'?'active':''}" onclick="setProdStatsPeriod('lifetime')">Lifetime</button>
       </div>
       <div class="prod-stat-row">
-        <div class="prod-stat-card"><div class="prod-stat-val">${lifeDone2}</div><div class="prod-stat-label">Total Lifetime</div></div>
-        <div class="prod-stat-card"><div class="prod-stat-val">${w7Total>0?Math.round((w7Done/w7Total)*100):0}%</div><div class="prod-stat-label">Completion 7 Hari</div></div>
-      </div>`;
-    const allProdKeys=[td2,...Object.keys(ph).sort().reverse()].filter((v,i,a)=>a.indexOf(v)===i).slice(0,7);
-    allProdKeys.forEach(k=>{
-      const done=k===td2?todayDone2:(ph[k]?.done||0);
-      const total=k===td2?todayTotal2:(ph[k]?.total||0);
-      const pct=total>0?Math.round((done/total)*100):0;
+        <div class="prod-stat-card"><div class="prod-stat-val">${prodAvg}%</div><div class="prod-stat-label">Rata-rata completion</div></div>
+        <div class="prod-stat-card"><div class="prod-stat-val">${prodDone}</div><div class="prod-stat-label">Total task selesai</div></div>
+      </div>
+      <div class="prod-stat-row">
+        <div class="prod-stat-card"><div class="prod-stat-val">${prodTotal}</div><div class="prod-stat-label">Total task dibuat</div></div>
+        <div class="prod-stat-card"><div class="prod-stat-val">${prodDays}</div><div class="prod-stat-label">Jumlah hari tercatat</div></div>
+      </div>
+      <div style="font-size:12px;font-weight:800;color:var(--text-2);margin:12px 0 6px">Riwayat Harian Produktif</div>`;
+    if(displayProd.length===0){
+      html+=`<div class="no-items">Belum ada histori produktivitas pada periode ini.</div>`;
+    }
+    displayProd.forEach(({k,rec})=>{
+      const pct=prodRecordPct(rec);
       const col=pct>=80?'var(--green)':pct>=50?'var(--orange)':'var(--text-3)';
       html+=`<div class="history-row">
         <div class="history-date" style="white-space:pre;font-size:11px">${fmtDate(k)}</div>
         <div class="history-bars"><div class="history-bar-wrap"><div class="history-bar" style="width:${pct}%;background:${col}"></div></div></div>
-        <div class="history-vals"><div class="history-pct" style="color:${col}">${done}/${total}</div></div>
+        <div class="history-vals"><div class="history-pct" style="color:${col}">${rec.done}/${rec.total}</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="openProdHistoryDetail('${k}')" style="padding:6px 8px;font-size:11px">Detail</button>
       </div>`;
     });
+    if(prodRecords.length>shownProd){
+      html+=`<button class="load-more-btn" onclick="loadMoreProdHistory()">Tampilkan 5 hari lagi (sisa ${prodRecords.length-shownProd}) ↓</button>`;
+    }
+    if(shownProd>5){
+      html+=`<button class="load-more-btn" style="margin-top:6px" onclick="resetProdHistoryShown()">Sembunyikan ↑</button>`;
+    }
     html+=`</div>`;
   }
 
@@ -660,9 +757,11 @@ function renderStats(){
   </button>`;
   if(ra){
     const books2=state.books||[];
-    const finished2=books2.filter(b=>b.finished);
+    const finished2=books2.filter(b=>b.finished).sort((a,b)=>String(b.finishedDate||'').localeCompare(String(a.finishedDate||'')) || String(b.id||'').localeCompare(String(a.id||'')));
     const active2=books2.filter(b=>!b.finished);
     const totalPagesRead2=books2.reduce((a,b)=>a+(b.sessions||[]).reduce((x,s)=>x+s.pages,0),0);
+    const shownFinished=state.bookFinishedShown||5;
+    const displayFinished=finished2.slice(0,shownFinished);
     html+=`<div class="accordion-body">
       <div class="prod-stat-row">
         <div class="prod-stat-card"><div class="prod-stat-val">${active2.length}</div><div class="prod-stat-label">📖 Buku Aktif</div></div>
@@ -671,16 +770,6 @@ function renderStats(){
       <div class="prod-stat-row">
         <div class="prod-stat-card"><div class="prod-stat-val">${totalPagesRead2}</div><div class="prod-stat-label">📄 Total Halaman</div></div>
       </div>`;
-    if(finished2.length>0){
-      html+=`<div style="font-size:12px;font-weight:700;color:var(--text-2);margin:8px 0 6px">📚 Buku Selesai</div>`;
-      finished2.forEach(b=>{
-        html+=`<div class="book-stat-item">
-          <div class="book-stat-cover" style="background:var(--green-bg)">✅</div>
-          <div><div class="book-stat-title">${escHtml(b.title)}</div>
-          <div class="book-stat-meta">${b.totalPages} hal • ${b.finishedDate||'-'}</div></div>
-        </div>`;
-      });
-    }
     if(active2.length>0){
       html+=`<div style="font-size:12px;font-weight:700;color:var(--text-2);margin:8px 0 6px">📖 Sedang Dibaca</div>`;
       active2.forEach(b=>{
@@ -693,20 +782,25 @@ function renderStats(){
         </div>`;
       });
     }
+    if(finished2.length>0){
+      html+=`<div style="font-size:12px;font-weight:700;color:var(--text-2);margin:12px 0 6px">✅ Buku Selesai</div>`;
+      displayFinished.forEach(b=>{
+        html+=`<div class="book-stat-item">
+          <div class="book-stat-cover" style="background:var(--green-bg)">✅</div>
+          <div><div class="book-stat-title">${escHtml(b.title)}</div>
+          <div class="book-stat-meta">${b.totalPages} hal • ${b.finishedDate||'-'}</div></div>
+        </div>`;
+      });
+      if(finished2.length>shownFinished){
+        html+=`<button class="load-more-btn" onclick="loadMoreFinishedBooks()">Tampilkan 5 buku lagi (sisa ${finished2.length-shownFinished}) ↓</button>`;
+      }
+      if(shownFinished>5){
+        html+=`<button class="load-more-btn" style="margin-top:6px" onclick="resetFinishedBooksShown()">Sembunyikan ↑</button>`;
+      }
+    }
     if(books2.length===0) html+=`<div style="text-align:center;padding:20px;color:var(--text-3);font-size:13px">Belum ada buku. Tambah via tombol 📚!</div>`;
     html+=`</div>`;
   }
-
-    // Suplemen
-  html+=`<div class="section-label">💊 Suplemen</div>`;
-  SUPLEMEN.forEach(s=>{
-    html+=`<div class="suplemen-item">
-      <div class="suplemen-icon" style="background:${s.bg}">${s.icon}</div>
-      <div style="flex:1"><div class="suplemen-name">${s.name}</div><div class="suplemen-when">⏰ ${s.when}</div>
-      <div class="suplemen-desc" style="margin-top:3px">${s.desc}</div>
-      <div style="margin-top:4px;font-size:11px;color:var(--primary);font-weight:600">💡 ${s.tips}</div></div>
-    </div>`;
-  });
 
   html+=`<div class="section-label">⚙️ Pengaturan</div>
   <div class="card"><div class="card-body">
@@ -736,14 +830,6 @@ function renderStats(){
       Saran: simpan file backup ke Files/iCloud Drive. Import akan mengganti data aplikasi saat ini setelah konfirmasi.
     </p>
   </div></div>`;
-
-  html+=`<div class="install-hint">
-    <strong>📱 Install di iPhone</strong>
-    1. Upload folder ini ke hosting HTTPS seperti GitHub Pages, Netlify, Vercel, atau Cloudflare Pages<br>
-    2. Buka link dari <strong>Safari</strong> → tap ikon <strong>Share</strong><br>
-    3. Pilih <strong>"Add to Home Screen"</strong> → tap <strong>Add</strong><br>
-    4. Untuk offline mode, jangan buka sebagai file lokal <code>file://</code>; gunakan HTTPS.
-  </div>`;
   return html;
 }
 // ============ BOOK POPUP ============
@@ -893,6 +979,8 @@ function bindEvents(){
     });
   });
 
+  initProdDragDrop();
+
   // Enter key for inputs
   ['todayInput','tomorrowInput','ideaInput'].forEach(id=>{
     const el=document.getElementById(id);
@@ -1018,26 +1106,23 @@ function addTodayTask(){
   el.value='';saveState();render();
 }
 function toggleTodayTask(i){
-  if(state.todayTasks[i]) state.todayTasks[i].done=!state.todayTasks[i].done;
+  const t=state.todayTasks[i];
+  if(t){
+    t.done=!t.done;
+    if(t.done) t.completedAt=todayKey();
+    else delete t.completedAt;
+  }
   saveState();render();
 }
 function deleteTodayTask(i){
   state.todayTasks.splice(i,1);saveState();render();
 }
-function moveToIdea(i,from){
-  const t=from==='today'?state.todayTasks[i]:state.tomorrowTasks[i];
-  if(!t) return;
-  if(!state.ideas) state.ideas=[];
-  state.ideas.push({id:'idea_'+Date.now(),text:t.text,detail:t.detail||'',createdAt:todayKey()});
-  if(from==='today') state.todayTasks.splice(i,1);
-  else state.tomorrowTasks.splice(i,1);
-  saveState();render();showToast('💡 Dipindah ke Ide!');
+function moveTodayToTomorrow(i){
+  moveProdTask('today',i,'tomorrow');
 }
+
 function moveTomorrowToToday(i){
-  const t=state.tomorrowTasks[i];if(!t) return;
-  if(!state.todayTasks) state.todayTasks=[];
-  state.todayTasks.push({...t,done:false});
-  state.tomorrowTasks.splice(i,1);saveState();render();showToast('📌 Dipindah ke Hari Ini!');
+  moveProdTask('tomorrow',i,'today');
 }
 function addTomorrowTask(){
   const el=document.getElementById('tomorrowInput');
@@ -1056,16 +1141,161 @@ function addIdea(){
 }
 function deleteIdea(i){state.ideas.splice(i,1);saveState();render();}
 function moveIdeaToToday(i){
-  const t=state.ideas[i];if(!t) return;
-  if(!state.todayTasks) state.todayTasks=[];
-  state.todayTasks.push({id:'t_'+Date.now(),text:t.text,done:false,detail:t.detail||'',createdAt:todayKey()});
-  state.ideas.splice(i,1);saveState();render();showToast('📌 Dipindah ke Hari Ini!');
+  moveProdTask('idea',i,'today');
 }
 function moveIdeaToTomorrow(i){
-  const t=state.ideas[i];if(!t) return;
-  if(!state.tomorrowTasks) state.tomorrowTasks=[];
-  state.tomorrowTasks.push({id:'tm_'+Date.now(),text:t.text,done:false,dueDate:'',detail:t.detail||''});
-  state.ideas.splice(i,1);saveState();render();showToast('🗓️ Dipindah ke Rencana!');
+  moveProdTask('idea',i,'tomorrow');
+}
+
+function getProdList(type){
+  if(type==='today') return state.todayTasks||[];
+  if(type==='tomorrow') return state.tomorrowTasks||[];
+  if(type==='idea') return state.ideas||[];
+  if(type==='pending') return state.pendingTasks||[];
+  return [];
+}
+function isProdDropAllowed(source,target,index){
+  if(!source||!target||source===target) return false;
+  if(target!=='today'&&target!=='tomorrow') return false;
+  if(source==='today'&&target==='tomorrow'){
+    const t=(state.todayTasks||[])[index];
+    return !!t&&!t.done;
+  }
+  if(source==='tomorrow'&&target==='today') return true;
+  if(source==='idea'&&(target==='today'||target==='tomorrow')) return true;
+  if(source==='pending'&&(target==='today'||target==='tomorrow')) return true;
+  return false;
+}
+function moveProdTask(source,index,target){
+  index=parseInt(index,10);
+  if(!isProdDropAllowed(source,target,index)){
+    if(source==='today'&&target==='tomorrow') showToast('Task selesai tidak dipindahkan ke rencana.');
+    else showToast('Arah pindah ini tidak aktif.');
+    return;
+  }
+  const list=getProdList(source);
+  const t=list[index];
+  if(!t) return;
+  if(target==='today'){
+    if(!state.todayTasks) state.todayTasks=[];
+    state.todayTasks.push({id:'t_'+Date.now(),text:t.text,detail:t.detail||'',done:false,createdAt:todayKey()});
+  } else if(target==='tomorrow'){
+    if(!state.tomorrowTasks) state.tomorrowTasks=[];
+    state.tomorrowTasks.push({id:'tm_'+Date.now(),text:t.text,detail:t.detail||'',done:false,dueDate:t.dueDate||''});
+  }
+  list.splice(index,1);
+  saveState();render();
+  showToast(target==='today'?'📌 Dipindah ke Hari Ini!':'🗓️ Dipindah ke Akan Dilakukan!');
+}
+
+let prodDragState=null;
+function initProdDragDrop(){
+  document.querySelectorAll('.prod-drag-handle').forEach(handle=>{
+    handle.addEventListener('pointerdown',startProdDrag);
+  });
+}
+function startProdDrag(e){
+  if(e.button!==undefined&&e.button!==0) return;
+  const handle=e.currentTarget;
+  const item=handle.closest('.prod-item');
+  if(!item) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const rect=item.getBoundingClientRect();
+  const ghost=item.cloneNode(true);
+  ghost.classList.add('prod-drag-ghost');
+  ghost.style.width=rect.width+'px';
+  document.body.appendChild(ghost);
+  prodDragState={
+    source:handle.dataset.dragType,
+    index:parseInt(handle.dataset.dragIndex,10),
+    ghost,
+    offsetX:e.clientX-rect.left,
+    offsetY:e.clientY-rect.top,
+    moved:false
+  };
+  moveProdGhost(e.clientX,e.clientY);
+  document.body.classList.add('prod-dragging');
+  document.addEventListener('pointermove',onProdDragMove,{passive:false});
+  document.addEventListener('pointerup',endProdDrag,{passive:false});
+  document.addEventListener('pointercancel',cancelProdDrag,{passive:false});
+}
+function moveProdGhost(x,y){
+  if(!prodDragState?.ghost) return;
+  prodDragState.ghost.style.left=(x-prodDragState.offsetX)+'px';
+  prodDragState.ghost.style.top=(y-prodDragState.offsetY)+'px';
+}
+function clearProdDropMarks(){
+  document.querySelectorAll('.prod-drop-zone').forEach(z=>z.classList.remove('drop-active','drop-blocked'));
+}
+function getDropZoneAt(x,y){
+  const el=document.elementFromPoint(x,y);
+  return el?el.closest('.prod-drop-zone'):null;
+}
+function onProdDragMove(e){
+  if(!prodDragState) return;
+  e.preventDefault();
+  prodDragState.moved=true;
+  moveProdGhost(e.clientX,e.clientY);
+  clearProdDropMarks();
+  const zone=getDropZoneAt(e.clientX,e.clientY);
+  if(zone){
+    const target=zone.dataset.prodZone;
+    zone.classList.add(isProdDropAllowed(prodDragState.source,target,prodDragState.index)?'drop-active':'drop-blocked');
+  }
+}
+function endProdDrag(e){
+  if(!prodDragState) return;
+  e.preventDefault();
+  const d=prodDragState;
+  const zone=getDropZoneAt(e.clientX,e.clientY);
+  cleanupProdDrag();
+  if(zone){
+    const target=zone.dataset.prodZone;
+    if(isProdDropAllowed(d.source,target,d.index)) moveProdTask(d.source,d.index,target);
+    else showToast('Arah drag ini tidak aktif.');
+  }
+}
+function cancelProdDrag(e){
+  cleanupProdDrag();
+}
+function cleanupProdDrag(){
+  clearProdDropMarks();
+  document.body.classList.remove('prod-dragging');
+  if(prodDragState?.ghost) prodDragState.ghost.remove();
+  prodDragState=null;
+  document.removeEventListener('pointermove',onProdDragMove);
+  document.removeEventListener('pointerup',endProdDrag);
+  document.removeEventListener('pointercancel',cancelProdDrag);
+}
+
+function openPendingDetail(i){
+  const t=state.pendingTasks[i];if(!t) return;
+  document.getElementById('prodDetailTitle').textContent='⏳ Detail Task Tertunda';
+  document.getElementById('prodDetailBody').innerHTML=`
+    <p style="font-size:14px;font-weight:700;margin-bottom:10px">${escHtml(t.text)}</p>
+    <p style="font-size:12px;color:var(--text-3);margin-bottom:8px">Tertunda dari: ${t.sourceDate||'-'}</p>
+    <textarea class="input-field" id="detailTextarea" rows="4" placeholder="Catatan detail...">${escHtml(t.detail||'')}</textarea>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="savePendingDetail(${i})">Simpan</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeDetailOverlay()">Tutup</button>
+    </div>`;
+  document.getElementById('prodDetailOverlay').classList.add('open');
+}
+function savePendingDetail(i){
+  const val=document.getElementById('detailTextarea')?.value||'';
+  if(state.pendingTasks[i]) state.pendingTasks[i].detail=val;
+  saveState();closeDetailOverlay();render();showToast('✅ Detail disimpan!');
+}
+function movePendingToToday(i){
+  moveProdTask('pending',i,'today');
+}
+function movePendingToTomorrow(i){
+  moveProdTask('pending',i,'tomorrow');
+}
+function deletePendingTask(i){
+  if(!confirm('Hapus task tertunda ini?')) return;
+  state.pendingTasks.splice(i,1);saveState();render();showToast('🗑️ Task tertunda dihapus');
 }
 
 // Detail popups for productivity
@@ -1127,6 +1357,35 @@ function saveIdeaDetail(i){
 }
 function closeDetailOverlay(){document.getElementById('prodDetailOverlay').classList.remove('open');}
 
+function openProdHistoryDetail(k){
+  const rec=getProdRecordForDate(k);
+  const pct=prodRecordPct(rec);
+  const doneTasks=(rec.tasks||[]).filter(t=>t.done);
+  const undoneTasks=(rec.tasks||[]).filter(t=>!t.done);
+  let html=`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
+    <div style="font-size:15px;font-weight:800;margin-bottom:4px">${fmtDate(k).replace('\n',' · ')}</div>
+    <div style="font-size:13px;color:var(--text-2)">${rec.done}/${rec.total} task selesai · ${pct}% completion</div>
+  </div>`;
+  if((rec.tasks||[]).length===0){
+    html+=`<div class="warning-box">Histori lama ini hanya menyimpan angka, belum menyimpan detail nama task. Detail task akan tersedia untuk hari-hari setelah update ini dipakai.</div>`;
+  } else {
+    html+=`<div class="section-label" style="margin-top:0">✅ Task Selesai</div>`;
+    if(doneTasks.length===0) html+=`<div class="no-items">Tidak ada task selesai pada hari ini.</div>`;
+    doneTasks.forEach(t=>{
+      html+=`<div class="prod-item"><div class="prod-item-main"><div class="prod-check done">✓</div><div><div class="prod-text done" style="text-decoration:none;color:var(--text)">${escHtml(t.text)}</div>${t.detail?`<div class="task-detail">${escHtml(t.detail)}</div>`:''}</div></div></div>`;
+    });
+    html+=`<div class="section-label">○ Belum Selesai</div>`;
+    if(undoneTasks.length===0) html+=`<div class="no-items">Tidak ada task yang tertinggal.</div>`;
+    undoneTasks.forEach(t=>{
+      html+=`<div class="prod-item"><div class="prod-item-main"><div class="prod-check"></div><div><div class="prod-text">${escHtml(t.text)}</div>${t.detail?`<div class="task-detail">${escHtml(t.detail)}</div>`:''}</div></div></div>`;
+    });
+  }
+  html+=`<button class="btn btn-ghost" style="width:100%;margin-top:6px" onclick="closeDetailOverlay()">Tutup</button>`;
+  document.getElementById('prodDetailTitle').textContent='🎯 Detail Produktivitas';
+  document.getElementById('prodDetailBody').innerHTML=html;
+  document.getElementById('prodDetailOverlay').classList.add('open');
+}
+
 // ============ BACKUP / RESTORE ============
 function formatBackupTime(iso){
   if(!iso) return 'Belum pernah backup';
@@ -1144,7 +1403,10 @@ function normalizeState(){
   if(!state.ideas) state.ideas=[];
   if(!state.tomorrowTasks) state.tomorrowTasks=[];
   if(!state.todayTasks) state.todayTasks=[];
+  if(!state.pendingTasks) state.pendingTasks=[];
   if(!state.prodHistory) state.prodHistory={};
+  if(!state.prodStatsPeriod) state.prodStatsPeriod='7';
+  if(!state.prodHistoryShown) state.prodHistoryShown=5;
   if(!state.userName) state.userName='Bos';
   if(!state.lastBackupAt) state.lastBackupAt='';
   const today=todayKey();
@@ -1219,6 +1481,11 @@ async function handleBackupFileSelect(event){
 function switchTab(t){state.tab=t;render();}
 function setWorkoutDay(i){state.workoutDay=i;render();}
 function setStatsPeriod(p){state.statsPeriod=p;state.historyShown=7;render();}
+function setProdStatsPeriod(p){state.prodStatsPeriod=p;state.prodHistoryShown=5;render();}
+function loadMoreProdHistory(){state.prodHistoryShown=(state.prodHistoryShown||5)+5;render();}
+function resetProdHistoryShown(){state.prodHistoryShown=5;render();}
+function loadMoreFinishedBooks(){state.bookFinishedShown=(state.bookFinishedShown||5)+5;render();}
+function resetFinishedBooksShown(){state.bookFinishedShown=5;render();}
 function toggleStatsAccordion(key){
   state.statsAccordion=state.statsAccordion===key?'':key;
   render();
@@ -1245,7 +1512,7 @@ function executeResetAll(){
   if(document.getElementById('confirmInput').value.trim()!=='HAPUS'){showToast('❌ Ketik HAPUS dengan huruf kapital!');return;}
   state.checked={};state.history={};state.streak=0;state.userName='Bos';
   state.rokokHistory={};state.waterHistory={};state.books=[];
-  state.todayTasks=[];state.tomorrowTasks=[];state.ideas=[];state.prodHistory={};state.lastBackupAt='';
+  state.todayTasks=[];state.pendingTasks=[];state.tomorrowTasks=[];state.ideas=[];state.prodHistory={};state.prodHistoryShown=5;state.prodStatsPeriod='7';state.bookFinishedShown=5;state.lastBackupAt='';
   saveState();closeConfirm();render();showToast('🗑️ Semua data dihapus');
 }
 

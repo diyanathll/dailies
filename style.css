@@ -248,3 +248,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 .accordion-btn.open{border-color:var(--primary);color:var(--primary);background:var(--primary-bg)}
 .accordion-btn:active{transform:scale(.98)}
 .accordion-body{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;margin-top:-4px;margin-bottom:12px;border:1.5px solid var(--primary-bg)}
+
+/* PRODUCTIVITY DRAG */
+.prod-drop-zone{min-height:54px;border:1.5px dashed transparent;border-radius:14px;transition:all .15s;padding:2px}
+.prod-drop-zone.drop-active{border-color:var(--primary);background:var(--primary-bg)}
+.prod-drop-zone.drop-blocked{border-color:var(--red);background:var(--red-bg)}
+.prod-drag-handle{width:30px;height:30px;border-radius:9px;border:1.5px solid var(--border);background:var(--bg);color:var(--text-2);font-size:15px;font-weight:800;cursor:grab;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;touch-action:none}
+.prod-drag-handle:active{cursor:grabbing;transform:scale(.96)}
+.prod-drag-ghost{position:fixed;z-index:1000;pointer-events:none;opacity:.92;transform:rotate(1deg);box-shadow:var(--shadow-lg)}
+.prod-dragging{user-select:none;-webkit-user-select:none;cursor:grabbing}
