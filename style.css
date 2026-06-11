@@ -42,7 +42,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 .nav-btn .nav-label{font-size:10px;font-weight:600}
 
 /* FLOATING BUTTONS */
-.float-stack{position:fixed;right:16px;bottom:90px;display:flex;flex-direction:column;gap:10px;z-index:200}
+.float-stack{position:fixed;right:16px;bottom:calc(150px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;z-index:200}
 .float-btn{width:52px;height:52px;border-radius:50%;color:white;border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:transform .15s;position:relative;box-shadow:var(--shadow-md)}
 .float-btn:active{transform:scale(.92)}
 .float-btn-book{background:linear-gradient(135deg,#0284c7,#0369a1)}
