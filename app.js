@@ -2,6 +2,7 @@
 const APP_DISPLAY_NAME='boneeps';
 try{document.title=APP_DISPLAY_NAME;}catch(e){}
 const MAX_ROKOK=5,WATER_TARGET=2.5,WATER_GLASS=0.25,WATER_GLASSES=10;
+const WATER_WARN_HIGH=3.5,WATER_WARN_STRONG=4.0,WATER_WARN_STOP=5.0,WATER_FAST_WARNING=1.0;
 const MOTIVASI=["Konsistensi > Motivasi. Lakuin aja, perasaan ikut nanti. 🔥","Orang sukses bukan yang paling berbakat — yang paling konsisten! 🏆","Satu kebiasaan kecil hari ini = kebiasaan besar 3 bulan lagi! 📈","Kamu bukan malas, kamu belum punya sistem. Sekarang kamu punya! ✅","Jangan compare sama orang lain. Compare sama kamu kemarin! 💪","Mulai dari yang kecil, tapi mulai sekarang. 🚀","Done is better than perfect. Selesai lebih baik dari sempurna! 🎯"];
 
 // ============ DATE HELPERS ============
@@ -42,10 +43,10 @@ function buildSchedule(){
   const dow=getTodayDow();
   const dn=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
   let pmDetail='';
-  if(isExfo) pmDetail='Malam EXFO ('+dn[dow]+'): Exfoliating Pad → Serum Brightening → Moisturizer → Night Lotion. Skip toner & retinol!';
-  else if(isMaskerBright) pmDetail='Malam MASKER BRIGHT ('+dn[dow]+'): Toner → Masker Bright → Serum Brightening → Moisturizer → Night Lotion.';
-  else if(isMaskerCharcoal) pmDetail='Malam MASKER CHARCOAL ('+dn[dow]+'): Toner → Masker Charcoal → Moisturizer → Night Lotion. Skip retinol.';
-  else pmDetail='Malam normal ('+dn[dow]+'): Toner → Retinol Serum → Moisturizer → Night Lotion.';
+  if(isExfo) pmDetail='Malam EXFO ('+dn[dow]+'): Micellar Water → Face Wash → Exfoliating Pad → Hydrating Toner → Serum Brightening gentle → Moisturizer → Night Lotion. Skip retinol.';
+  else if(isMaskerBright) pmDetail='Malam MASKER BRIGHT ('+dn[dow]+'): Micellar Water → Face Wash → Masker Brightening → Bilas → Toner → Serum Brightening → Moisturizer → Night Lotion.';
+  else if(isMaskerCharcoal) pmDetail='Malam CLAY MASK ('+dn[dow]+'): Micellar Water → Face Wash → Clay Mask → Bilas → Toner → Serum Hydrating/Brightening ringan → Moisturizer → Night Lotion.';
+  else pmDetail='Malam normal ('+dn[dow]+'): Micellar Water → Face Wash → Toner → Retinol Serum → Moisturizer → Night Lotion.';
   return[
     {time:"05:00",label:"Bangun Pagi",emoji:"⏰",cat:"routine",dur:"5 mnt",detail:"Langsung matiin alarm, jangan snooze! Duduk tegak 30 detik, tarik napas dalam 3x."},
     {time:"05:05",label:"Minum Air — 2 Gelas (0.5L)",emoji:"💧",cat:"air",dur:"5 mnt",detail:"Hidrasi pertama setelah bangun. Taruh botol air di samping kasur dari malem.",water:2},
@@ -53,13 +54,13 @@ function buildSchedule(){
     {time:"05:40",label:"Grounding & Udara Segar",emoji:"🌱",cat:"health",dur:"10 mnt",detail:"Keluar kos setelah olahraga. Injak tanah/rumput langsung (barefoot). Tarik napas udara pagi, cooling down post-workout. Belum cukup UV-B — murni untuk mood & recovery."},
     {time:"05:50",label:"Minum Whey Protein",emoji:"🥛",cat:"suplemen",dur:"5 mnt",detail:"1 scoop + 200ml air dingin. Minum dalam 30–45 menit setelah workout untuk recovery otot optimal."},
     {time:"05:55",label:"Mandi",emoji:"🚿",cat:"routine",dur:"15 mnt",detail:"Mandi air dingin — ngilangin sisa ngantuk. Berpakaian rapi meski di kos."},
-    {time:"06:10",label:"AM Skincare Tahap 1 (Tanpa Sunscreen)",emoji:"🌿",cat:"skincare",dur:"5 mnt",detail:"Toner → Serum Brightening → Moisturizer → Day Lotion. Sunscreen dipake SETELAH berjemur jam 07:15!"},
+    {time:"06:10",label:"AM Skincare Routine",emoji:"🌿",cat:"skincare",dur:"5 mnt",detail:"Face wash saat mandi → Toner → Serum Brightening → Moisturizer → Day Lotion → Sunscreen. Proteksi UV tetap prioritas."},
     {time:"06:15",label:"Minum Air — 1 Gelas (0.25L)",emoji:"💧",cat:"air",dur:"2 mnt",detail:"Sebelum sarapan. Bantu pencernaan dan persiapan makan.",water:1},
     {time:"06:20",label:"Sarapan",emoji:"🍳",cat:"meal",dur:"20 mnt",detail:"Usahain ada protein tiap sarapan: telur, tahu, tempe, atau ikan."},
     {time:"06:40",label:"Minum Multivitamin + Omega-3",emoji:"💊",cat:"suplemen",dur:"2 mnt",detail:"Minum setelah makan agar tidak mual. Multivitamin = imun & energi. Omega-3 = otak, kulit & anti-inflamasi."},
     {time:"06:45",label:"Belajar / Kerja Fokus Sesi 1",emoji:"📚",cat:"productive",dur:"1 jam 15 mnt",detail:"Golden hour! HP jauh, notif off. Kerjain tugas paling penting & susah."},
-    {time:"07:00",label:"Berjemur Vitamin D ☀️",emoji:"☀️",cat:"health",dur:"10–15 mnt",detail:"Keluar kos, kena sinar matahari langsung ke kulit 10–15 menit. Tanpa sunscreen dulu! Jam 07:00–08:00 = UV-B cukup untuk vitamin D, belum terlalu panas."},
-    {time:"07:15",label:"AM Skincare Tahap 2 — Apply Sunscreen",emoji:"🌞",cat:"skincare",dur:"2 mnt",detail:"Setelah masuk dari berjemur, langsung apply Sunscreen SPF 30+. Kulit sekarang terlindungi penuh seharian!"},
+    {time:"07:00",label:"Udara Pagi / Sinar Matahari Ringan ☀️",emoji:"☀️",cat:"health",dur:"10–15 mnt",detail:"Keluar kos sebentar untuk cahaya pagi, mood, dan ritme tidur. Jangan memaksa panas lama; sunscreen tetap dipakai sebagai proteksi kulit."},
+    {time:"07:15",label:"Cek Sunscreen",emoji:"🌞",cat:"skincare",dur:"2 mnt",detail:"Pastikan sunscreen sudah dipakai merata. Reapply jika banyak keringat atau banyak aktivitas luar."},
     {time:"07:20",label:"Belajar / Kerja Fokus Sesi 2",emoji:"💼",cat:"productive",dur:"2 jam",detail:"Lanjut deep work. Kondisi optimal: otak udah dapat sinar matahari, kulit terlindungi."},
     {time:"09:30",label:"Istirahat + Cemilan",emoji:"☕",cat:"meal",dur:"15 mnt",detail:"Jalan-jalan sebentar. Cemilan: pisang / susu / kacang rebus."},
     {time:"09:30",label:"Minum Air — 1 Gelas (0.25L)",emoji:"💧",cat:"air",dur:"2 mnt",detail:"Saat istirahat pagi. Jangan tunggu haus!",water:1},
@@ -139,44 +140,54 @@ function getSkincareToday(){
   const dn=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
   let specialLabel='';
   if(isExfo) specialLabel='🧴 Malam Exfoliating ('+dn[dow]+')';
-  else if(isMaskerBright) specialLabel='✨ Malam Masker Brightening ('+dn[dow]+')';
-  else if(isMaskerCharcoal) specialLabel='🖤 Malam Masker Charcoal ('+dn[dow]+')';
+  else if(isMaskerBright) specialLabel='✨ Malam Masker Brightening Wash-off ('+dn[dow]+')';
+  else if(isMaskerCharcoal) specialLabel='🖤 Malam Clay Mask ('+dn[dow]+')';
   else specialLabel='🌙 Malam Normal — Retinol ('+dn[dow]+')';
   const amSteps=[
-    {num:1,name:"Toner",note:"Tepuk lembut ke wajah dengan kapas",color:"#0284c7",bg:"#e0f2fe"},
-    {num:2,name:"Serum Brightening",note:"2–3 tetes, ratakan ke seluruh wajah",color:"#db2777",bg:"#fce7f3"},
-    {num:3,name:"Moisturizer",note:"Tunggu serum 1–2 menit dulu",color:"#059669",bg:"#d1fae5"},
-    {num:4,name:"Day Lotion",note:"Setelah moisturizer meresap",color:"#7c3aed",bg:"#ede9fe"},
-    {num:5,name:"⏳ Keluar Berjemur dulu...",note:"Sunscreen SETELAH berjemur jam 07:00!",color:"#d97706",bg:"#fef3c7"},
-    {num:6,name:"Sunscreen SPF 30+",note:"Apply setelah masuk dari berjemur (~07:15)",color:"#d97706",bg:"#fef3c7"},
+    {num:1,name:"Face Wash / Cuci Muka",note:"Dilakukan saat mandi pagi. Kalau kulit kering, cukup gentle cleanse.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:2,name:"Toner",note:"Hydrating/soothing toner. Tepuk lembut, jangan digosok keras.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:3,name:"Serum Brightening",note:"2–3 tetes. Hindari layering active yang bikin perih.",color:"#db2777",bg:"#fce7f3"},
+    {num:4,name:"Moisturizer",note:"Kunci hidrasi sebelum day lotion/sunscreen.",color:"#059669",bg:"#d1fae5"},
+    {num:5,name:"Day Lotion",note:"Pakai setelah moisturizer meresap.",color:"#7c3aed",bg:"#ede9fe"},
+    {num:6,name:"Sunscreen SPF 30+",note:"Proteksi utama pagi. Reapply kalau banyak keringat/aktivitas luar.",color:"#d97706",bg:"#fef3c7"},
   ];
   let pmSteps=[];
   if(isExfo) pmSteps=[
-    {num:1,name:"Noure Exfoliating Pad",note:"Gantikan toner. Usap lembut ke wajah",color:"#7c3aed",bg:"#ede9fe"},
-    {num:2,name:"Serum Brightening",note:"2–3 tetes setelah exfo pad meresap",color:"#db2777",bg:"#fce7f3"},
-    {num:3,name:"Moisturizer",note:"Kulit butuh hidrasi ekstra setelah exfo",color:"#059669",bg:"#d1fae5"},
-    {num:4,name:"Night Lotion",note:"Kunci kelembapan semalaman",color:"#4f46e5",bg:"#eef2ff"},
+    {num:1,name:"Micellar Water",note:"Angkat sunscreen/debu dulu sebelum cuci muka.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:2,name:"Face Wash saat mandi",note:"Bersihkan residu micellar water dan kotoran.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:3,name:"Noure Exfoliating Pad",note:"Pakai setelah wajah bersih dan kering. Jangan gabung retinol.",color:"#7c3aed",bg:"#ede9fe"},
+    {num:4,name:"Hydrating Toner",note:"Setelah exfo. Pakai toner hydrating/soothing, bukan toner exfoliating lagi.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:5,name:"Serum Brightening Gentle",note:"Boleh jika gentle seperti niacinamide/arbutin/hydrating. Skip kalau perih atau active terlalu kuat.",color:"#db2777",bg:"#fce7f3"},
+    {num:6,name:"Moisturizer",note:"Wajib untuk bantu jaga skin barrier setelah exfo.",color:"#059669",bg:"#d1fae5"},
+    {num:7,name:"Night Lotion",note:"Langkah terakhir untuk mengunci kelembapan.",color:"#4f46e5",bg:"#eef2ff"},
   ];
   else if(isMaskerBright) pmSteps=[
-    {num:1,name:"Toner",note:"Balance kulit sebelum masker",color:"#0284c7",bg:"#e0f2fe"},
-    {num:2,name:"Masker Brightening",note:"Diamkan 10–15 menit",color:"#db2777",bg:"#fce7f3"},
-    {num:3,name:"Serum Brightening",note:"Setelah masker dibilas bersih",color:"#db2777",bg:"#fce7f3"},
-    {num:4,name:"Moisturizer",note:"Kunci hidrasi",color:"#059669",bg:"#d1fae5"},
-    {num:5,name:"Night Lotion",note:"Langkah terakhir",color:"#4f46e5",bg:"#eef2ff"},
+    {num:1,name:"Micellar Water",note:"Angkat sunscreen/debu dulu.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:2,name:"Face Wash saat mandi",note:"Bersihkan wajah sebelum masker.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:3,name:"Masker Brightening",note:"Asumsi wash-off mask. Diamkan sesuai instruksi produk, lalu bilas.",color:"#db2777",bg:"#fce7f3"},
+    {num:4,name:"Toner",note:"Hydrating/soothing setelah masker dibilas.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:5,name:"Serum Brightening",note:"2–3 tetes setelah toner.",color:"#db2777",bg:"#fce7f3"},
+    {num:6,name:"Moisturizer",note:"Kunci hidrasi.",color:"#059669",bg:"#d1fae5"},
+    {num:7,name:"Night Lotion",note:"Langkah terakhir.",color:"#4f46e5",bg:"#eef2ff"},
   ];
   else if(isMaskerCharcoal) pmSteps=[
-    {num:1,name:"Toner",note:"Prep kulit sebelum masker charcoal",color:"#0284c7",bg:"#e0f2fe"},
-    {num:2,name:"Masker Charcoal",note:"Fokus T-zone. Diamkan 10–15 menit",color:"#374151",bg:"#f3f4f6"},
-    {num:3,name:"Moisturizer",note:"Setelah masker dibilas bersih",color:"#059669",bg:"#d1fae5"},
-    {num:4,name:"Night Lotion",note:"Kunci kelembapan",color:"#4f46e5",bg:"#eef2ff"},
+    {num:1,name:"Micellar Water",note:"Angkat sunscreen/debu dulu.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:2,name:"Face Wash saat mandi",note:"Bersihkan wajah sebelum clay mask.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:3,name:"Clay Mask",note:"Fokus T-zone bila kulit mudah kering. Bilas sesuai instruksi produk.",color:"#374151",bg:"#f3f4f6"},
+    {num:4,name:"Toner",note:"Hydrating/soothing setelah clay mask.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:5,name:"Serum Brightening / Hydrating Ringan",note:"Pakai yang gentle. Skip active kuat kalau kulit terasa kering/perih.",color:"#db2777",bg:"#fce7f3"},
+    {num:6,name:"Moisturizer",note:"Clay mask bisa drying, jadi hidrasi wajib.",color:"#059669",bg:"#d1fae5"},
+    {num:7,name:"Night Lotion",note:"Kunci kelembapan.",color:"#4f46e5",bg:"#eef2ff"},
   ];
   else pmSteps=[
-    {num:1,name:"Toner",note:"Bersihkan & balance pH kulit",color:"#0284c7",bg:"#e0f2fe"},
-    {num:2,name:"Retinol Serum",note:"2–3 tetes, hindari area bawah mata",color:"#d97706",bg:"#fef3c7"},
-    {num:3,name:"Moisturizer",note:"WAJIB setelah retinol — cegah kekeringan",color:"#059669",bg:"#d1fae5"},
-    {num:4,name:"Night Lotion",note:"Kunci kelembapan semalaman",color:"#4f46e5",bg:"#eef2ff"},
+    {num:1,name:"Micellar Water",note:"Angkat sunscreen/debu dulu.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:2,name:"Face Wash saat mandi",note:"Bersihkan residu micellar water dan kotoran.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:3,name:"Toner",note:"Hydrating/soothing toner.",color:"#0284c7",bg:"#e0f2fe"},
+    {num:4,name:"Retinol Serum",note:"2–3 tetes. Jangan dipakai di malam exfoliating.",color:"#d97706",bg:"#fef3c7"},
+    {num:5,name:"Moisturizer",note:"Wajib setelah retinol untuk cegah kering/iritasi.",color:"#059669",bg:"#d1fae5"},
+    {num:6,name:"Night Lotion",note:"Kunci kelembapan semalaman.",color:"#4f46e5",bg:"#eef2ff"},
   ];
-  return{amSteps,pmSteps,specialLabel,isExfo};
+  return{amSteps,pmSteps,specialLabel,isExfo,isMaskerBright,isMaskerCharcoal};
 }
 // ============ STATE ============
 let SCHEDULE_TODAY=buildSchedule();
@@ -186,6 +197,7 @@ let state={
   workoutDay:0,
   rokokHistory:{},
   waterHistory:{},
+  waterEvents:{},
   statsPeriod:'mingguan',
   historyShown:7,
   statsAccordion:'',
@@ -205,16 +217,125 @@ let state={
   prodHistoryShown:5,
   lastProdDate:'',
   lastBackupAt:'',
+  firstUseDate:'',
+  floatPos:null,
 };
 
 function todayChecked(){return state.checked[todayKey()]||{};}
 function completedCount(){return Object.values(todayChecked()).filter(Boolean).length;}
 function progressPct(){return Math.round((completedCount()/SCHEDULE_TODAY.length)*100);}
-function todayWater(){return state.waterHistory?.[todayKey()]||0;}
+function todayWater(){return getWaterGlasses(todayKey());}
 function todayRokok(){return state.rokokHistory?.[todayKey()]||0;}
 
 const STORAGE_KEY='boneepsData_v1';
 const LEGACY_STORAGE_KEY='kosProduktif5';
+
+function nowIso(){return new Date().toISOString();}
+function ensureWaterEvents(){if(!state.waterEvents) state.waterEvents={};}
+function getWaterEvents(key=todayKey()){ensureWaterEvents();return Array.isArray(state.waterEvents[key])?state.waterEvents[key]:[];}
+function getWaterGlassesFromEvents(key=todayKey()){
+  const events=getWaterEvents(key);
+  if(events.length===0) return null;
+  const liters=events.reduce((sum,e)=>sum+(Number(e.amount)||0),0);
+  return Math.max(0,Math.round(liters/WATER_GLASS));
+}
+function getWaterGlasses(key=todayKey()){
+  const fromEvents=getWaterGlassesFromEvents(key);
+  if(fromEvents!==null) return fromEvents;
+  return Math.max(0,Number(state.waterHistory?.[key]||0));
+}
+function getWaterLiters(key=todayKey()){return +(getWaterGlasses(key)*WATER_GLASS).toFixed(2);}
+function syncWaterHistory(key=todayKey()){
+  if(!state.waterHistory) state.waterHistory={};
+  const fromEvents=getWaterGlassesFromEvents(key);
+  if(fromEvents!==null) state.waterHistory[key]=fromEvents;
+  else if(state.waterHistory[key]===undefined) state.waterHistory[key]=0;
+}
+function addWaterEvent(key,amount,source,extra={}){
+  ensureWaterEvents();
+  if(!Array.isArray(state.waterEvents[key])) state.waterEvents[key]=[];
+  const id=extra.id||('water_'+Date.now()+'_'+Math.random().toString(36).slice(2,7));
+  state.waterEvents[key].push({id,amount:+amount,source,createdAt:nowIso(),...extra});
+  syncWaterHistory(key);
+}
+function removeWaterEventById(key,id){
+  ensureWaterEvents();
+  if(!Array.isArray(state.waterEvents[key])) return;
+  state.waterEvents[key]=state.waterEvents[key].filter(e=>e.id!==id);
+  syncWaterHistory(key);
+}
+function addScheduleWater(idx,glasses){
+  const key=todayKey();
+  const id='schedule_'+idx;
+  removeWaterEventById(key,id);
+  addWaterEvent(key,glasses*WATER_GLASS,'schedule',{id,taskIndex:idx});
+}
+function removeScheduleWater(idx){removeWaterEventById(todayKey(),'schedule_'+idx);}
+function addManualWater(deltaGlasses){
+  const key=todayKey();
+  ensureWaterEvents();
+  if(deltaGlasses>0){
+    for(let i=0;i<deltaGlasses;i++) addWaterEvent(key,WATER_GLASS,'manual');
+  } else if(deltaGlasses<0){
+    const events=getWaterEvents(key);
+    for(let i=0;i<Math.abs(deltaGlasses);i++){
+      const manualIndex=[...events].map((e,idx)=>({e,idx})).filter(x=>x.e.source==='manual'||x.e.source==='manual-adjust'||x.e.source==='legacy').pop()?.idx;
+      if(manualIndex===undefined){showToast('Tidak ada air manual yang bisa dikurangi. Uncheck jadwal minum jika ingin mengurangi air dari jadwal.');break;}
+      events.splice(manualIndex,1);
+    }
+    state.waterEvents[key]=events;
+    syncWaterHistory(key);
+  }
+  saveState();
+  const msg=getWaterStatusMessage(key);
+  showToast(msg.short);
+  render();
+}
+function setWaterTotalGlasses(targetGlasses){
+  const key=todayKey();
+  targetGlasses=Math.max(0,Math.round(targetGlasses));
+  const events=getWaterEvents(key).filter(e=>e.source==='schedule');
+  const scheduleGlasses=Math.round(events.reduce((a,e)=>a+(Number(e.amount)||0),0)/WATER_GLASS);
+  const manualGlasses=Math.max(0,targetGlasses-scheduleGlasses);
+  const manualEvents=[];
+  for(let i=0;i<manualGlasses;i++) manualEvents.push({id:'manual_adjust_'+Date.now()+'_'+i,amount:WATER_GLASS,source:'manual-adjust',createdAt:nowIso()});
+  ensureWaterEvents();
+  state.waterEvents[key]=[...events,...manualEvents];
+  syncWaterHistory(key);
+  saveState();
+  showToast(getWaterStatusMessage(key).short);
+  render();
+}
+function getWaterStatusMessage(key=todayKey()){
+  const liters=getWaterLiters(key);
+  const events=getWaterEvents(key);
+  const oneHourAgo=Date.now()-60*60*1000;
+  const recentLiters=events.filter(e=>new Date(e.createdAt||0).getTime()>=oneHourAgo).reduce((a,e)=>a+(Number(e.amount)||0),0);
+  if(recentLiters>=WATER_FAST_WARNING) return {level:'fast',short:'⚠️ Air tercatat ≥1L dalam 1 jam. Jangan minum terlalu cepat.',long:'Terlalu cepat minum bisa berisiko. Beri jeda dan ikuti rasa haus.'};
+  if(liters>=WATER_WARN_STOP) return {level:'stop',short:'⛔ Sudah sangat tinggi. Jangan tambah air lagi kecuali memang perlu/atas arahan medis.',long:'Di atas 5L/hari sudah sangat tinggi untuk tracking normal. Jangan mengejar angka.'};
+  if(liters>=WATER_WARN_STRONG) return {level:'strong',short:'🚨 Sudah tinggi. Jangan minum karena mengejar target.',long:'4L+ sudah tinggi. Pastikan tidak diminum dalam waktu singkat dan jangan memaksa.'};
+  if(liters>=WATER_WARN_HIGH) return {level:'high',short:'⚠️ Di atas target cukup jauh. Ikuti rasa haus.',long:'Di atas 3.5L: lanjut hanya kalau aktivitas/keringat memang tinggi.'};
+  if(liters>=3.0) return {level:'over',short:'💧 Di atas target. Masih wajar kalau aktivitas tinggi.',long:'Target sudah lewat. Tidak perlu memaksa tambah air.'};
+  if(liters>=WATER_TARGET) return {level:'done',short:'🎉 Target 2.5L tercapai. Sudah cukup.',long:'Target harian tercapai. Setelah ini cukup minum sesuai haus.'};
+  return {level:'normal',short:'💧 '+liters.toFixed(2)+'L / '+WATER_TARGET+'L',long:'Masih dalam target harian.'};
+}
+function getDateRangeKeys(startKey,endKey){
+  const out=[];let k=startKey;
+  while(k<=endKey&&out.length<5000){out.push(k);k=addDaysKey(k,1);}
+  return out;
+}
+function getFirstUseDate(){
+  const all=[state.firstUseDate,...Object.keys(state.history||{}),...Object.keys(state.rokokHistory||{}),...Object.keys(state.waterHistory||{}),...Object.keys(state.waterEvents||{}),...Object.keys(state.prodHistory||{})].filter(Boolean).sort();
+  return all[0]||todayKey();
+}
+function getPeriodKeys(period){
+  const today=todayKey();
+  const first=getFirstUseDate();
+  let start=first;
+  if(period==='mingguan') start=addDaysKey(today,-6)>first?addDaysKey(today,-6):first;
+  if(period==='bulanan') start=addDaysKey(today,-29)>first?addDaysKey(today,-29):first;
+  return getDateRangeKeys(start,today);
+}
 
 function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}catch(e){}}
 
@@ -231,7 +352,10 @@ function loadState(){
   if(!state.rokokHistory) state.rokokHistory={};
   if(!state.rokokHistory[today]) state.rokokHistory[today]=0;
   if(!state.waterHistory) state.waterHistory={};
+  if(!state.waterEvents) state.waterEvents={};
   if(!state.waterHistory[today]) state.waterHistory[today]=0;
+  if(!state.firstUseDate) state.firstUseDate=getFirstUseDate()||today;
+  syncWaterHistory(today);
   if(!state.books) state.books=[];
   if(!state.ideas) state.ideas=[];
   if(!state.tomorrowTasks) state.tomorrowTasks=[];
@@ -242,6 +366,7 @@ function loadState(){
   if(!state.prodHistoryShown) state.prodHistoryShown=5;
   if(!state.lastBackupAt) state.lastBackupAt='';
   if(!state.bookFinishedShown) state.bookFinishedShown=5;
+  if(!state.floatPos) state.floatPos=null;
   // Auto move tomorrow -> today on date change
   autoMoveTasks();
   recalcStreak();
@@ -350,6 +475,7 @@ function render(){
   else if(state.tab==='stats') c.innerHTML=renderStats();
   bindEvents();
   updateFloats();
+  initFloatingDrag();
 }
 
 function renderHeader(){
@@ -363,7 +489,7 @@ function renderHeader(){
   document.getElementById('progressBar').style.width=pct+'%';
   document.getElementById('progressLabel').textContent=completedCount()+'/'+SCHEDULE_TODAY.length+' task ('+pct+'%)';
   const wg=todayWater();
-  const wl=(wg*WATER_GLASS).toFixed(2);
+  const wl=getWaterLiters().toFixed(2);
   document.getElementById('waterHeaderBar').style.width=Math.min(100,(wg/WATER_GLASSES)*100)+'%';
   document.getElementById('waterHeaderVal').textContent=wl+'L / '+WATER_TARGET+'L';
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
@@ -379,6 +505,7 @@ function updateFloats(){
   // Book badge
   const activeBooks=(state.books||[]).filter(b=>!b.finished).length;
   document.getElementById('floatBookBadge').textContent=activeBooks;
+  applyFloatPosition();
 }
 
 // ============ SCHEDULE ============
@@ -386,8 +513,11 @@ function renderSchedule(){
   const ch=todayChecked();
   const midx=new Date().getDate()%MOTIVASI.length;
   const wg=todayWater();
-  const wl=(wg*WATER_GLASS).toFixed(2);
+  const wl=getWaterLiters().toFixed(2);
   const wpct=Math.min(100,(wg/WATER_GLASSES)*100);
+  const waterStatus=getWaterStatusMessage();
+  const waterOver=Math.max(0,getWaterLiters()-WATER_TARGET);
+  const waterGlassCount=Math.max(WATER_GLASSES,Math.ceil(wg));
   let html=`<div class="motivasi-banner"><span style="font-size:22px">💬</span><p class="motivasi-text"><strong>Quote hari ini:</strong><br>${MOTIVASI[midx]}</p></div>`;
   html+=`<div class="water-card">
     <div class="water-card-top">
@@ -395,11 +525,20 @@ function renderSchedule(){
       <div class="water-card-val">${wl}L <span style="font-size:13px;color:var(--text-3);font-weight:400">/ ${WATER_TARGET}L</span></div>
     </div>
     <div class="water-track-wrap"><div class="water-track-bar" style="width:${wpct}%"></div></div>
+    ${waterOver>0?`<div class="water-over-label">+${waterOver.toFixed(2)}L di atas target</div>`:''}
     <div class="water-glasses">`;
-  for(let i=0;i<WATER_GLASSES;i++){
+  for(let i=0;i<waterGlassCount;i++){
     html+=`<div class="water-glass ${i<wg?'filled':''}" onclick="toggleWaterGlass(${i})">${i<wg?'💧':'○'}</div>`;
   }
-  html+=`</div><p style="font-size:11px;color:var(--text-3);margin-top:8px;text-align:center">Tap gelas untuk tandai minum • 1 gelas = 0.25L</p></div>`;
+  html+=`</div>
+    <div class="water-controls">
+      <button class="water-control-btn" onclick="addManualWater(-1)">−</button>
+      <div class="water-control-mid">Manual 0.25L</div>
+      <button class="water-control-btn primary" onclick="addManualWater(1)">+</button>
+    </div>
+    <div class="water-status water-status-${waterStatus.level}">${waterStatus.long}</div>
+    <p style="font-size:11px;color:var(--text-3);margin-top:8px;text-align:center">Tap gelas atau tombol +/− • 1 gelas = 0.25L • jadwal minum ikut tercatat otomatis</p>
+  </div>`;
 
   const groups=[
     {label:'🌅 Pagi (05:00 – 07:20)',range:[0,14]},
@@ -443,13 +582,13 @@ function renderSkincare(){
     <div><div class="week-banner-title">Skincare Hari Ini</div><div class="week-banner-sub">${dn[dow]} — ${sc.specialLabel}</div></div></div>`;
   html+=`<div class="section-label">📅 Jadwal Mingguan</div>
   <div class="card"><div class="card-body" style="font-size:13px;line-height:2;color:var(--text-2)">
-    <p>🌿 <strong>Senin, Rabu, Jumat:</strong> Toner → Retinol → Moisturizer → Night Lotion</p>
-    <p>🧴 <strong>Selasa & Sabtu:</strong> Exfoliating Pad → Serum Brightening → Moisturizer → Night Lotion</p>
-    <p>✨ <strong>Kamis:</strong> Toner → Masker Bright → Serum Brightening → Moisturizer → Night Lotion</p>
-    <p>🖤 <strong>Minggu:</strong> Toner → Masker Charcoal → Moisturizer → Night Lotion</p>
+    <p>🌿 <strong>Senin, Rabu, Jumat:</strong> Micellar → Face Wash → Toner → Retinol → Moisturizer → Night Lotion</p>
+    <p>🧴 <strong>Selasa & Sabtu:</strong> Micellar → Face Wash → Exfoliating Pad → Hydrating Toner → Serum Brightening gentle → Moisturizer → Night Lotion</p>
+    <p>✨ <strong>Kamis:</strong> Micellar → Face Wash → Masker Brightening → Bilas → Toner → Serum Brightening → Moisturizer → Night Lotion</p>
+    <p>🖤 <strong>Minggu:</strong> Micellar → Face Wash → Clay Mask → Bilas → Toner → Serum Hydrating/Brightening → Moisturizer → Night Lotion</p>
   </div></div>`;
   html+=`<div class="section-label">🌅 AM Routine — Tiap Pagi</div>
-  <div class="info-box">☀️ Step 1–4 dilakukan jam 06:10 <strong>sebelum</strong> berjemur. Step 6 (Sunscreen) dilakukan jam 07:15 <strong>setelah</strong> masuk dari berjemur!</div>
+  <div class="info-box">☀️ Pagi dibuat lebih aman: cuci muka, hidrasi, brightening, moisturizer, lalu sunscreen. Cahaya pagi boleh, tapi jangan mengorbankan proteksi UV.</div>
   <div class="card"><div class="card-body">`;
   sc.amSteps.forEach(s=>{
     html+=`<div class="skincare-step">
@@ -459,7 +598,7 @@ function renderSkincare(){
   });
   html+=`</div></div>`;
   html+=`<div class="section-label">${sc.specialLabel}</div>`;
-  if(sc.isExfo) html+=`<div class="info-box">🧴 Malam exfoliating: skip toner & retinol. Kombinasi exfo + retinol = over-exfoliate & iritasi!</div>`;
+  if(sc.isExfo) html+=`<div class="info-box">🧴 Malam exfoliating: skip retinol. Toner boleh setelah exfo jika hydrating/soothing, bukan toner exfoliating lagi. Serum brightening hanya jika gentle dan tidak perih.</div>`;
   html+=`<div class="card"><div class="card-body">`;
   sc.pmSteps.forEach(s=>{
     html+=`<div class="skincare-step">
@@ -470,11 +609,11 @@ function renderSkincare(){
   html+=`</div></div>`;
   html+=`<div class="section-label">💡 Tips</div>
   <div class="card"><div class="card-body" style="font-size:13px;color:var(--text-2);line-height:1.9">
-    <p>☀️ <strong>Sunscreen WAJIB</strong> tiap pagi — tanpa ini serum brightening sia-sia</p>
-    <p>🌱 Berjemur jam 07:00 tanpa sunscreen → masuk → baru apply sunscreen</p>
-    <p>⚠️ Retinol + Exfo jangan di malam yang sama</p>
-    <p>🚬 Rokok mempercepat penuaan kulit — sunscreen & retinol bantu counter efeknya</p>
-    <p>💧 Minum 2.5L/hari = kulit lebih lembap dari dalam</p>
+    <p>☀️ <strong>Sunscreen pagi tetap prioritas</strong>, terutama kalau pakai brightening/retinol/exfo.</p>
+    <p>🧴 Micellar water dipakai malam untuk angkat sunscreen/debu, lalu tetap cuci muka.</p>
+    <p>⚠️ Retinol + Exfoliating Pad jangan di malam yang sama.</p>
+    <p>🖤 Setelah clay mask, fokus hidrasi: toner, serum gentle, moisturizer.</p>
+    <p>💧 Target air 2.5L/hari; lebih boleh tercatat, tapi jangan memaksa minum.</p>
   </div></div>`;
   return html;
 }
@@ -622,26 +761,12 @@ function renderProductivity(){
 function renderStats(){
   const period=state.statsPeriod||'mingguan';
   const today=todayKey();
-
-  function getKeys(p){
-    const allCheckKeys=Object.keys(state.history||{});
-    const allRokokKeys=Object.keys(state.rokokHistory||{});
-    const allKeys=[...new Set([...allCheckKeys,...allRokokKeys,today])].sort();
-    if(p==='mingguan') return allKeys.filter(k=>k>=addDaysKey(today,-6));
-    if(p==='bulanan') return allKeys.filter(k=>k>=addDaysKey(today,-29));
-    return allKeys;
-  }
-  const keys=getKeys(period);
-  const checkVals=keys.map(k=>({k,pct:state.history[k]??(k===today?progressPct():null)})).filter(x=>x.pct!==null);
-  const rokokVals=keys.map(k=>({k,r:state.rokokHistory?.[k]??null})).filter(x=>x.r!==null);
-
-  const avgCheck=checkVals.length>0?Math.round(checkVals.reduce((a,b)=>a+b.pct,0)/checkVals.length):0;
-  const streakDays=checkVals.filter(x=>x.pct>=80&&(state.rokokHistory?.[x.k]??0)<=MAX_ROKOK).length;
-  const avgRokok=rokokVals.length>0?(rokokVals.reduce((a,b)=>a+b.r,0)/rokokVals.length).toFixed(1):'-';
-  const totalRokok=rokokVals.reduce((a,b)=>a+b.r,0);
-  const idealRokok=MAX_ROKOK*keys.length;
-  const rCol=parseFloat(avgRokok)<=MAX_ROKOK?'var(--green)':parseFloat(avgRokok)<=MAX_ROKOK+1?'var(--orange)':'var(--red)';
+  const keys=getPeriodKeys(period);
   const pLabel={mingguan:'7 Hari',bulanan:'30 Hari',lifetime:'Semua Waktu'};
+
+  const checkVals=keys.map(k=>({k,pct:state.history[k]??(k===today?progressPct():0)}));
+  const avgCheck=checkVals.length>0?Math.round(checkVals.reduce((a,b)=>a+b.pct,0)/checkVals.length):0;
+  const productiveDays=checkVals.filter(x=>x.pct>=80&&(state.rokokHistory?.[x.k]??0)<=MAX_ROKOK).length;
 
   let html=`<div class="section-label">📅 Periode</div>
   <div class="stats-period-row">
@@ -654,51 +779,101 @@ function renderStats(){
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-val">${state.streak}</div><div class="stat-label">🔥 Streak Aktif</div></div>
     <div class="stat-card"><div class="stat-val">${avgCheck}%</div><div class="stat-label">📈 Rata-rata</div></div>
-    <div class="stat-card"><div class="stat-val">${streakDays}</div><div class="stat-label">⭐ Hari Produktif</div></div>
+    <div class="stat-card"><div class="stat-val">${productiveDays}</div><div class="stat-label">⭐ Hari Produktif</div></div>
     <div class="stat-card"><div class="stat-val">${progressPct()}%</div><div class="stat-label">📅 Hari Ini</div></div>
   </div>`;
 
-  html+=`<div class="section-label">🚬 Rokok — ${pLabel[period]}</div>
-  <div class="stats-grid">
-    <div class="stat-card"><div class="stat-val" style="color:${todayRokok()<=MAX_ROKOK?'var(--green)':'var(--red)'}">${todayRokok()}</div><div class="stat-label">Hari Ini (max ${MAX_ROKOK})</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:${rCol}">${avgRokok}</div><div class="stat-label">Rata-rata / Hari</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:var(--orange)">${totalRokok}</div><div class="stat-label">Total Batang</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:${totalRokok<=idealRokok?'var(--green)':'var(--red)'}">${idealRokok}</div><div class="stat-label">Batas Ideal Periode</div></div>
-  </div>`;
-
-  // History with pagination
-  const allHistDates=[...new Set([...Object.keys(state.history||{}),...Object.keys(state.rokokHistory||{}),today])].sort().reverse();
+  const allHistDates=[...new Set([...Object.keys(state.history||{}),today])].sort().reverse();
   const shown=state.historyShown||7;
   const displayDates=allHistDates.slice(0,shown);
-
-  html+=`<div class="section-label">📋 Riwayat Harian</div><div class="card"><div class="card-body">`;
+  html+=`<div class="section-label">📋 Riwayat Checklist</div><div class="card"><div class="card-body">`;
   displayDates.forEach(k=>{
     const p=state.history[k]??(k===today?progressPct():0);
-    const r=state.rokokHistory?.[k]??'-';
     const pColor=p>=80?'var(--green)':p>=50?'var(--orange)':'var(--text-3)';
-    const rColor=r!=='-'&&r<=MAX_ROKOK?'var(--green)':r!=='-'&&r<=MAX_ROKOK+1?'var(--orange)':'var(--red)';
     html+=`<div class="history-row">
       <div class="history-date" style="white-space:pre;font-size:11px">${fmtDate(k)}</div>
-      <div class="history-bars">
-        <div class="history-bar-wrap"><div class="history-bar" style="width:${p}%;background:${pColor}"></div></div>
-        <div class="history-bar-wrap"><div class="history-bar" style="width:${r!=='-'?Math.min(100,(r/MAX_ROKOK)*100):0}%;background:${rColor}"></div></div>
-      </div>
-      <div class="history-vals">
-        <div class="history-pct" style="color:${pColor}">${p}%</div>
-        <div class="history-rokok-val" style="color:${rColor}">🚬${r}</div>
-      </div>
+      <div class="history-bars"><div class="history-bar-wrap"><div class="history-bar" style="width:${p}%;background:${pColor}"></div></div></div>
+      <div class="history-vals"><div class="history-pct" style="color:${pColor}">${p}%</div></div>
     </div>`;
   });
   html+=`</div></div>`;
-  if(allHistDates.length>shown){
-    html+=`<button class="load-more-btn" onclick="loadMoreHistory()">Tampilkan 5 lagi (sisa ${allHistDates.length-shown}) ↓</button>`;
-  }
-  if(shown>7){
-    html+=`<button class="load-more-btn" style="margin-top:6px" onclick="resetHistoryShown()">Sembunyikan ↑</button>`;
+  if(allHistDates.length>shown) html+=`<button class="load-more-btn" onclick="loadMoreHistory()">Tampilkan 5 hari lagi (sisa ${allHistDates.length-shown}) ↓</button>`;
+  if(shown>7) html+=`<button class="load-more-btn" style="margin-top:6px" onclick="resetHistoryShown()">Sembunyikan ↑</button>`;
+
+  html+=`<div class="section-label">📊 Statistik Lainnya</div>`;
+
+  // Water accordion
+  const wa=state.statsAccordion==='water';
+  html+=`<button class="accordion-btn ${wa?'open':''}" onclick="toggleStatsAccordion('water')">
+    <span>💧 Air</span><span>${wa?'▲':'▼'}</span>
+  </button>`;
+  if(wa){
+    const waterLiters=keys.map(k=>({k,l:getWaterLiters(k)}));
+    const totalL=waterLiters.reduce((a,x)=>a+x.l,0);
+    const avgL=keys.length>0?(totalL/keys.length):0;
+    const targetDays=waterLiters.filter(x=>x.l>=WATER_TARGET).length;
+    const shownWater=state.waterHistoryShown||5;
+    const displayWater=[...waterLiters].reverse().slice(0,shownWater);
+    html+=`<div class="accordion-body">
+      <div class="prod-stat-row">
+        <div class="prod-stat-card"><div class="prod-stat-val">${avgL.toFixed(2)}L</div><div class="prod-stat-label">Rata-rata / Hari</div></div>
+        <div class="prod-stat-card"><div class="prod-stat-val">${totalL.toFixed(2)}L</div><div class="prod-stat-label">Total Air</div></div>
+      </div>
+      <div class="prod-stat-row">
+        <div class="prod-stat-card"><div class="prod-stat-val">${targetDays}/${keys.length}</div><div class="prod-stat-label">Hari Capai Target</div></div>
+        <div class="prod-stat-card"><div class="prod-stat-val">${WATER_TARGET}L</div><div class="prod-stat-label">Target Harian</div></div>
+      </div>
+      <div style="font-size:12px;font-weight:800;color:var(--text-2);margin:12px 0 6px">Riwayat Air</div>`;
+    displayWater.forEach(({k,l})=>{
+      const pct=Math.min(100,Math.round((l/WATER_TARGET)*100));
+      const col=l>=WATER_TARGET?'var(--green)':l>=WATER_TARGET*0.7?'var(--orange)':'var(--text-3)';
+      const over=Math.max(0,l-WATER_TARGET);
+      html+=`<div class="history-row">
+        <div class="history-date" style="white-space:pre;font-size:11px">${fmtDate(k)}</div>
+        <div class="history-bars"><div class="history-bar-wrap"><div class="history-bar" style="width:${pct}%;background:${col}"></div></div></div>
+        <div class="history-vals"><div class="history-pct" style="color:${col}">${l.toFixed(2)}L</div>${over>0?`<div class="history-rokok-val" style="color:var(--blue)">+${over.toFixed(2)}L</div>`:''}</div>
+      </div>`;
+    });
+    if(waterLiters.length>shownWater) html+=`<button class="load-more-btn" onclick="loadMoreWaterHistory()">Tampilkan 5 hari lagi (sisa ${waterLiters.length-shownWater}) ↓</button>`;
+    if(shownWater>5) html+=`<button class="load-more-btn" style="margin-top:6px" onclick="resetWaterHistoryShown()">Sembunyikan ↑</button>`;
+    html+=`</div>`;
   }
 
-  // Accordion: Productivity & Reading Stats
-  html+=`<div class="section-label">📊 Statistik Lainnya</div>`;
+  // Rokok accordion
+  const rka=state.statsAccordion==='rokok';
+  html+=`<button class="accordion-btn ${rka?'open':''}" onclick="toggleStatsAccordion('rokok')">
+    <span>🚬 Rokok</span><span>${rka?'▲':'▼'}</span>
+  </button>`;
+  if(rka){
+    const rokokRows=keys.map(k=>({k,r:state.rokokHistory?.[k]??0}));
+    const totalRokok=rokokRows.reduce((a,x)=>a+x.r,0);
+    const avgRokok=keys.length>0?(totalRokok/keys.length):0;
+    const idealRokok=MAX_ROKOK*keys.length;
+    const overLimitDays=rokokRows.filter(x=>x.r>MAX_ROKOK).length;
+    const shownRokok=state.rokokHistoryShown||5;
+    const displayRokok=[...rokokRows].reverse().slice(0,shownRokok);
+    html+=`<div class="accordion-body">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-val" style="color:${todayRokok()<=MAX_ROKOK?'var(--green)':'var(--red)'}">${todayRokok()}</div><div class="stat-label">Hari Ini (max ${MAX_ROKOK})</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:${avgRokok<=MAX_ROKOK?'var(--green)':avgRokok<=MAX_ROKOK+1?'var(--orange)':'var(--red)'}">${avgRokok.toFixed(1)}</div><div class="stat-label">Rata-rata / Hari</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:var(--orange)">${totalRokok}</div><div class="stat-label">Total Batang</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:${totalRokok<=idealRokok?'var(--green)':'var(--red)'}">${idealRokok}</div><div class="stat-label">Batas Ideal Periode</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:${overLimitDays>0?'var(--red)':'var(--green)'}">${overLimitDays}</div><div class="stat-label">Hari Lewat Batas</div></div>
+      </div>
+      <div style="font-size:12px;font-weight:800;color:var(--text-2);margin:12px 0 6px">Riwayat Rokok</div>`;
+    displayRokok.forEach(({k,r})=>{
+      const pct=Math.min(100,Math.round((r/MAX_ROKOK)*100));
+      const col=r<=MAX_ROKOK?'var(--green)':r<=MAX_ROKOK+1?'var(--orange)':'var(--red)';
+      html+=`<div class="history-row">
+        <div class="history-date" style="white-space:pre;font-size:11px">${fmtDate(k)}</div>
+        <div class="history-bars"><div class="history-bar-wrap"><div class="history-bar" style="width:${pct}%;background:${col}"></div></div></div>
+        <div class="history-vals"><div class="history-pct" style="color:${col}">${r}/${MAX_ROKOK}</div>${r>MAX_ROKOK?`<div class="history-rokok-val" style="color:var(--red)">+${r-MAX_ROKOK}</div>`:`<div class="history-rokok-val" style="color:var(--green)">Aman</div>`}</div>
+      </div>`;
+    });
+    if(rokokRows.length>shownRokok) html+=`<button class="load-more-btn" onclick="loadMoreRokokHistory()">Tampilkan 5 hari lagi (sisa ${rokokRows.length-shownRokok}) ↓</button>`;
+    if(shownRokok>5) html+=`<button class="load-more-btn" style="margin-top:6px" onclick="resetRokokHistoryShown()">Sembunyikan ↑</button>`;
+    html+=`</div>`;
+  }
 
   // Productivity accordion
   const pa=state.statsAccordion==='prod';
@@ -736,9 +911,7 @@ function renderStats(){
         <div class="prod-stat-card"><div class="prod-stat-val">${prodDays}</div><div class="prod-stat-label">Jumlah hari tercatat</div></div>
       </div>
       <div style="font-size:12px;font-weight:800;color:var(--text-2);margin:12px 0 6px">Riwayat Harian Produktif</div>`;
-    if(displayProd.length===0){
-      html+=`<div class="no-items">Belum ada histori produktivitas pada periode ini.</div>`;
-    }
+    if(displayProd.length===0) html+=`<div class="no-items">Belum ada histori produktivitas pada periode ini.</div>`;
     displayProd.forEach(({k,rec})=>{
       const pct=prodRecordPct(rec);
       const col=pct>=80?'var(--green)':pct>=50?'var(--orange)':'var(--text-3)';
@@ -749,12 +922,8 @@ function renderStats(){
         <button class="btn btn-ghost btn-sm" onclick="openProdHistoryDetail('${k}')" style="padding:6px 8px;font-size:11px">Detail</button>
       </div>`;
     });
-    if(prodRecords.length>shownProd){
-      html+=`<button class="load-more-btn" onclick="loadMoreProdHistory()">Tampilkan 5 hari lagi (sisa ${prodRecords.length-shownProd}) ↓</button>`;
-    }
-    if(shownProd>5){
-      html+=`<button class="load-more-btn" style="margin-top:6px" onclick="resetProdHistoryShown()">Sembunyikan ↑</button>`;
-    }
+    if(prodRecords.length>shownProd) html+=`<button class="load-more-btn" onclick="loadMoreProdHistory()">Tampilkan 5 hari lagi (sisa ${prodRecords.length-shownProd}) ↓</button>`;
+    if(shownProd>5) html+=`<button class="load-more-btn" style="margin-top:6px" onclick="resetProdHistoryShown()">Sembunyikan ↑</button>`;
     html+=`</div>`;
   }
 
@@ -767,7 +936,7 @@ function renderStats(){
     const books2=state.books||[];
     const finished2=books2.filter(b=>b.finished).sort((a,b)=>String(b.finishedDate||'').localeCompare(String(a.finishedDate||'')) || String(b.id||'').localeCompare(String(a.id||'')));
     const active2=books2.filter(b=>!b.finished);
-    const totalPagesRead2=books2.reduce((a,b)=>a+(b.sessions||[]).reduce((x,s)=>x+s.pages,0),0);
+    const totalPagesRead2=books2.reduce((a,b)=>a+(b.finished?Number(b.totalPages||0):Number(b.currentPage||0)),0);
     const shownFinished=state.bookFinishedShown||5;
     const displayFinished=finished2.slice(0,shownFinished);
     html+=`<div class="accordion-body">
@@ -776,7 +945,7 @@ function renderStats(){
         <div class="prod-stat-card"><div class="prod-stat-val">${finished2.length}</div><div class="prod-stat-label">✅ Buku Selesai</div></div>
       </div>
       <div class="prod-stat-row">
-        <div class="prod-stat-card"><div class="prod-stat-val">${totalPagesRead2}</div><div class="prod-stat-label">📄 Total Halaman</div></div>
+        <div class="prod-stat-card"><div class="prod-stat-val">${totalPagesRead2}</div><div class="prod-stat-label">📄 Halaman Efektif</div></div>
       </div>`;
     if(active2.length>0){
       html+=`<div style="font-size:12px;font-weight:700;color:var(--text-2);margin:8px 0 6px">📖 Sedang Dibaca</div>`;
@@ -799,12 +968,8 @@ function renderStats(){
           <div class="book-stat-meta">${b.totalPages} hal • ${b.finishedDate||'-'}</div></div>
         </div>`;
       });
-      if(finished2.length>shownFinished){
-        html+=`<button class="load-more-btn" onclick="loadMoreFinishedBooks()">Tampilkan 5 buku lagi (sisa ${finished2.length-shownFinished}) ↓</button>`;
-      }
-      if(shownFinished>5){
-        html+=`<button class="load-more-btn" style="margin-top:6px" onclick="resetFinishedBooksShown()">Sembunyikan ↑</button>`;
-      }
+      if(finished2.length>shownFinished) html+=`<button class="load-more-btn" onclick="loadMoreFinishedBooks()">Tampilkan 5 buku lagi (sisa ${finished2.length-shownFinished}) ↓</button>`;
+      if(shownFinished>5) html+=`<button class="load-more-btn" style="margin-top:6px" onclick="resetFinishedBooksShown()">Sembunyikan ↑</button>`;
     }
     if(books2.length===0) html+=`<div style="text-align:center;padding:20px;color:var(--text-3);font-size:13px">Belum ada buku. Tambah via tombol 📚!</div>`;
     html+=`</div>`;
@@ -814,8 +979,9 @@ function renderStats(){
   <div class="card"><div class="card-body">
     <p style="font-size:13px;font-weight:600;margin-bottom:8px">Nama kamu</p>
     <input class="input-field" id="nameInput" type="text" placeholder="Nama kamu..." value="${escHtml(state.userName||'')}" maxlength="20">
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="saveName()" style="flex:1">Simpan</button>
+      <button class="btn btn-ghost" onclick="resetFloatPosition()" style="flex:1">Reset Floating</button>
       <button class="btn btn-danger" onclick="resetToday()" style="flex:1">Reset Hari Ini</button>
       <button class="btn btn-danger" onclick="openConfirmDelete()" style="flex:1">Hapus Semua</button>
     </div>
@@ -879,12 +1045,13 @@ function renderBookTracker(){
 function renderBookDetail(bookId){
   const b=(state.books||[]).find(x=>x.id===bookId);
   if(!b) return '<p>Buku tidak ditemukan.</p>';
+  if(!Array.isArray(b.sessions)) b.sessions=[];
   const pct=Math.round((b.currentPage/b.totalPages)*100);
   const remaining=b.totalPages-b.currentPage;
-  // Pages read per session history
   const sessions=b.sessions||[];
-  const totalRead=sessions.reduce((a,s)=>a+s.pages,0);
-  const avgPerSession=sessions.length>0?(totalRead/sessions.length).toFixed(1):0;
+  const readSessions=sessions.filter(s=>s.type!=='correction');
+  const effectiveRead=b.finished?Number(b.totalPages||0):Number(b.currentPage||0);
+  const avgPerSession=readSessions.length>0?(effectiveRead/readSessions.length).toFixed(1):0;
 
   let html=`<div class="book-detail">
     <div class="book-detail-title">${escHtml(b.title)}</div>
@@ -898,23 +1065,25 @@ function renderBookDetail(bookId){
     <input class="input-field sm" id="pageUpdateInput" type="number" placeholder="Halaman sekarang..." min="0" max="${b.totalPages}" value="${b.currentPage}" style="flex:1">
     <button class="btn btn-primary btn-sm" onclick="updateBookPage('${b.id}')">Update</button>
   </div>
+  <p style="font-size:11px;color:var(--text-3);line-height:1.5;margin:-2px 0 12px">Input turun akan dianggap <strong>koreksi halaman</strong> dan tidak dihitung sebagai sesi baca.</p>
   <div style="display:flex;gap:8px;margin-bottom:16px">
     <button class="btn btn-ghost btn-sm" style="flex:1" onclick="finishBook('${b.id}')">✅ Tandai Selesai</button>
     <button class="btn btn-danger btn-sm" style="flex:1" onclick="deleteBook('${b.id}')">🗑️ Hapus</button>
   </div>
   <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-2)">Statistik Baca</div>
   <div class="prod-stat-row">
-    <div class="prod-stat-card"><div class="prod-stat-val">${sessions.length}</div><div class="prod-stat-label">Sesi Baca</div></div>
-    <div class="prod-stat-card"><div class="prod-stat-val">${avgPerSession}</div><div class="prod-stat-label">Rata-rata Hal/Sesi</div></div>
+    <div class="prod-stat-card"><div class="prod-stat-val">${readSessions.length}</div><div class="prod-stat-label">Sesi Baca</div></div>
+    <div class="prod-stat-card"><div class="prod-stat-val">${avgPerSession}</div><div class="prod-stat-label">Rata-rata Efektif Hal/Sesi</div></div>
   </div>`;
 
   if(sessions.length>0){
     html+=`<div class="card"><div class="card-body">`;
-    sessions.slice(-7).reverse().forEach(s=>{
+    sessions.slice(-10).reverse().forEach(s=>{
+      const isCorrection=s.type==='correction';
       html+=`<div class="history-row">
         <div class="history-date" style="font-size:11px">${s.date}</div>
-        <div style="flex:1;margin:0 10px;font-size:13px;color:var(--text-2)">Hal ${s.from} → ${s.to}</div>
-        <div style="font-size:12px;font-weight:700;color:var(--primary)">+${s.pages} hal</div>
+        <div style="flex:1;margin:0 10px;font-size:13px;color:var(--text-2)">${isCorrection?'Koreksi: ':''}Hal ${s.from} → ${s.to}${isCorrection?'<br><span style="font-size:11px;color:var(--text-3)">Tidak dihitung sebagai sesi baca</span>':''}</div>
+        <div style="font-size:12px;font-weight:700;color:${isCorrection?'var(--orange)':'var(--primary)'}">${isCorrection?'Koreksi':'+'+s.pages+' hal'}</div>
       </div>`;
     });
     html+=`</div></div>`;
@@ -927,10 +1096,7 @@ function renderBookDetail(bookId){
 function renderBookStats(){
   const finished=(state.books||[]).filter(b=>b.finished);
   const active=(state.books||[]).filter(b=>!b.finished);
-  const totalPagesRead=(state.books||[]).reduce((a,b)=>{
-    const sessions=b.sessions||[];
-    return a+sessions.reduce((x,s)=>x+s.pages,0);
-  },0);
+  const totalPagesRead=(state.books||[]).reduce((a,b)=>a+(b.finished?Number(b.totalPages||0):Number(b.currentPage||0)),0);
 
   let html=`<div class="prod-stat-row">
     <div class="prod-stat-card"><div class="prod-stat-val">${active.length}</div><div class="prod-stat-label">📖 Buku Aktif</div></div>
@@ -977,8 +1143,8 @@ function bindEvents(){
       const task=SCHEDULE_TODAY[idx];
       if(task.water){
         if(!state.waterHistory) state.waterHistory={};
-        if(state.checked[today][idx]) state.waterHistory[today]=Math.min(WATER_GLASSES,(state.waterHistory[today]||0)+task.water);
-        else state.waterHistory[today]=Math.max(0,(state.waterHistory[today]||0)-task.water);
+        if(state.checked[today][idx]) addScheduleWater(idx,task.water);
+        else removeScheduleWater(idx);
       }
       state.history[today]=progressPct();
       recalcStreak();
@@ -1003,18 +1169,14 @@ function bindEvents(){
 }
 
 function toggleWaterGlass(idx){
-  const today=todayKey();
-  if(!state.waterHistory) state.waterHistory={};
-  const cur=state.waterHistory[today]||0;
-  state.waterHistory[today]=idx<cur?idx:idx+1;
-  const liters=(state.waterHistory[today]*WATER_GLASS).toFixed(2);
-  if(state.waterHistory[today]>=WATER_GLASSES) showToast('🎉 Target 2.5L tercapai!');
-  else showToast('💧 '+liters+'L / '+WATER_TARGET+'L');
-  saveState();render();
+  const cur=todayWater();
+  const target=idx<cur?idx:idx+1;
+  setWaterTotalGlasses(target);
 }
 
 // Rokok
 function toggleRokokPopup(){
+  if(window.__floatDragSuppress){window.__floatDragSuppress=false;return;}
   const o=document.getElementById('rokokOverlay');
   o.classList.toggle('open');
   if(o.classList.contains('open')) updateRokokPopupUI();
@@ -1047,6 +1209,7 @@ function changeRokok(delta){
 
 // Book
 function toggleBookPopup(){
+  if(window.__floatDragSuppress){window.__floatDragSuppress=false;return;}
   const o=document.getElementById('bookOverlay');
   o.classList.toggle('open');
   if(o.classList.contains('open')){state.activeBookId=null;refreshBookPopup();}
@@ -1071,14 +1234,23 @@ function addBook(){
 function updateBookPage(bookId){
   const b=(state.books||[]).find(x=>x.id===bookId);
   if(!b) return;
+  if(!Array.isArray(b.sessions)) b.sessions=[];
   const newPage=parseInt(document.getElementById('pageUpdateInput')?.value);
   if(isNaN(newPage)||newPage<0||newPage>b.totalPages){showToast('❌ Halaman tidak valid!');return;}
-  if(newPage>b.currentPage){
-    const pages=newPage-b.currentPage;
-    b.sessions.push({date:todayKey(),from:b.currentPage,to:newPage,pages});
+  const oldPage=Number(b.currentPage||0);
+  if(newPage===oldPage){showToast('Tidak ada perubahan halaman.');return;}
+  if(newPage<oldPage){
+    const ok=confirm(`Halaman baru (${newPage}) lebih kecil dari progress sekarang (${oldPage}).\n\nCatat sebagai KOREKSI HALAMAN?\nKoreksi tidak dihitung sebagai sesi baca.`);
+    if(!ok) return;
+    b.sessions.push({date:todayKey(),from:oldPage,to:newPage,pages:0,type:'correction'});
+    b.currentPage=newPage;
+    showToast('↩️ Koreksi halaman disimpan.');
+  } else {
+    const pages=newPage-oldPage;
+    b.sessions.push({date:todayKey(),from:oldPage,to:newPage,pages,type:'read'});
+    b.currentPage=newPage;
     showToast('📖 +'+pages+' halaman dibaca!');
   }
-  b.currentPage=newPage;
   if(newPage>=b.totalPages){
     b.finished=true;b.finishedDate=todayKey();
     showToast('🎉 Buku selesai! Keren banget!');
@@ -1446,6 +1618,7 @@ function normalizeState(){
   if(!state.history) state.history={};
   if(!state.rokokHistory) state.rokokHistory={};
   if(!state.waterHistory) state.waterHistory={};
+  if(!state.waterEvents) state.waterEvents={};
   if(!state.books) state.books=[];
   if(!state.ideas) state.ideas=[];
   if(!state.tomorrowTasks) state.tomorrowTasks=[];
@@ -1456,10 +1629,13 @@ function normalizeState(){
   if(!state.prodHistoryShown) state.prodHistoryShown=5;
   if(!state.userName) state.userName='Bos';
   if(!state.lastBackupAt) state.lastBackupAt='';
+  if(!state.firstUseDate) state.firstUseDate=getFirstUseDate()||todayKey();
+  if(!state.floatPos) state.floatPos=null;
   const today=todayKey();
   if(!state.checked[today]) state.checked[today]={};
   if(!state.rokokHistory[today]) state.rokokHistory[today]=0;
   if(!state.waterHistory[today]) state.waterHistory[today]=0;
+  syncWaterHistory(today);
 }
 function exportBackup(){
   try{
@@ -1467,7 +1643,7 @@ function exportBackup(){
     state.lastBackupAt=exportedAt;
     const payload={
       app:'boneeps',
-      version:6,
+      version:9,
       storageKey:STORAGE_KEY,
       exportedAt,
       data:cloneState()
@@ -1539,6 +1715,10 @@ function toggleStatsAccordion(key){
 }
 function loadMoreHistory(){state.historyShown=(state.historyShown||7)+5;render();}
 function resetHistoryShown(){state.historyShown=7;render();}
+function loadMoreWaterHistory(){state.waterHistoryShown=(state.waterHistoryShown||5)+5;render();}
+function resetWaterHistoryShown(){state.waterHistoryShown=5;render();}
+function loadMoreRokokHistory(){state.rokokHistoryShown=(state.rokokHistoryShown||5)+5;render();}
+function resetRokokHistoryShown(){state.rokokHistoryShown=5;render();}
 
 function saveName(){
   const v=document.getElementById('nameInput')?.value.trim();
@@ -1547,7 +1727,7 @@ function saveName(){
 function resetToday(){
   if(!confirm('Reset checklist & air hari ini?')) return;
   const t=todayKey();
-  state.checked[t]={};state.history[t]=0;state.waterHistory[t]=0;
+  state.checked[t]={};state.history[t]=0;state.waterHistory[t]=0;if(state.waterEvents) state.waterEvents[t]=[];
   recalcStreak();saveState();render();showToast('🔄 Hari ini direset!');
 }
 function openConfirmDelete(){
@@ -1558,8 +1738,8 @@ function closeConfirm(){document.getElementById('confirmOverlay').classList.remo
 function executeResetAll(){
   if(document.getElementById('confirmInput').value.trim()!=='HAPUS'){showToast('❌ Ketik HAPUS dengan huruf kapital!');return;}
   state.checked={};state.history={};state.streak=0;state.userName='Bos';
-  state.rokokHistory={};state.waterHistory={};state.books=[];
-  state.todayTasks=[];state.pendingTasks=[];state.tomorrowTasks=[];state.ideas=[];state.prodHistory={};state.prodHistoryShown=5;state.prodStatsPeriod='7';state.bookFinishedShown=5;state.lastBackupAt='';
+  state.rokokHistory={};state.waterHistory={};state.waterEvents={};state.books=[];
+  state.todayTasks=[];state.pendingTasks=[];state.tomorrowTasks=[];state.ideas=[];state.prodHistory={};state.prodHistoryShown=5;state.prodStatsPeriod='7';state.bookFinishedShown=5;state.lastBackupAt='';state.firstUseDate=todayKey();state.floatPos=null;
   try{localStorage.removeItem(LEGACY_STORAGE_KEY);}catch(e){}
   saveState();closeConfirm();render();showToast('🗑️ Semua data dihapus');
 }
@@ -1567,6 +1747,68 @@ function executeResetAll(){
 function showToast(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+
+// ============ FLOATING BUTTON DRAG ==========
+let __floatDragReady=false;
+window.__floatDragSuppress=false;
+function applyFloatPosition(){
+  const stack=document.querySelector('.float-stack');
+  if(!stack) return;
+  if(state.floatPos&&Number.isFinite(state.floatPos.left)&&Number.isFinite(state.floatPos.top)){
+    stack.style.left=state.floatPos.left+'px';
+    stack.style.top=state.floatPos.top+'px';
+    stack.style.right='auto';
+    stack.style.bottom='auto';
+  } else {
+    stack.style.left='';stack.style.top='';stack.style.right='';stack.style.bottom='';
+  }
+}
+function resetFloatPosition(){
+  state.floatPos=null;saveState();applyFloatPosition();showToast('Floating button dikembalikan ke posisi awal.');
+}
+function initFloatingDrag(){
+  if(__floatDragReady) {applyFloatPosition();return;}
+  const stack=document.querySelector('.float-stack');
+  if(!stack) return;
+  __floatDragReady=true;
+  let startX=0,startY=0,startLeft=0,startTop=0,dragging=false,pid=null;
+  stack.addEventListener('pointerdown',e=>{
+    if(e.target.closest('.overlay')) return;
+    pid=e.pointerId;dragging=false;startX=e.clientX;startY=e.clientY;
+    const rect=stack.getBoundingClientRect();startLeft=rect.left;startTop=rect.top;
+    try{stack.setPointerCapture(pid);}catch(err){}
+  });
+  stack.addEventListener('pointermove',e=>{
+    if(pid!==e.pointerId) return;
+    const dx=e.clientX-startX,dy=e.clientY-startY;
+    if(!dragging&&Math.hypot(dx,dy)>8){dragging=true;stack.classList.add('dragging');}
+    if(!dragging) return;
+    e.preventDefault();
+    const rect=stack.getBoundingClientRect();
+    const maxLeft=Math.max(8,window.innerWidth-rect.width-8);
+    const maxTop=Math.max(8,window.innerHeight-rect.height-100);
+    const left=Math.min(maxLeft,Math.max(8,startLeft+dx));
+    const top=Math.min(maxTop,Math.max(8,startTop+dy));
+    state.floatPos={left:Math.round(left),top:Math.round(top)};
+    applyFloatPosition();
+  });
+  function finish(e){
+    if(pid!==e.pointerId) return;
+    try{stack.releasePointerCapture(pid);}catch(err){}
+    pid=null;
+    if(dragging){
+      window.__floatDragSuppress=true;
+      setTimeout(()=>{window.__floatDragSuppress=false;},350);
+      saveState();
+      stack.classList.remove('dragging');
+    }
+    dragging=false;
+  }
+  stack.addEventListener('pointerup',finish);
+  stack.addEventListener('pointercancel',finish);
+  applyFloatPosition();
 }
 
 // ============ SERVICE WORKER ============
