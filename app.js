@@ -234,8 +234,9 @@ function nowIso(){return new Date().toISOString();}
 function ensureWaterEvents(){if(!state.waterEvents) state.waterEvents={};}
 function getWaterEvents(key=todayKey()){ensureWaterEvents();return Array.isArray(state.waterEvents[key])?state.waterEvents[key]:[];}
 function getWaterGlassesFromEvents(key=todayKey()){
-  const events=getWaterEvents(key);
-  if(events.length===0) return null;
+  ensureWaterEvents();
+  if(!Object.prototype.hasOwnProperty.call(state.waterEvents,key)) return null;
+  const events=Array.isArray(state.waterEvents[key])?state.waterEvents[key]:[];
   const liters=events.reduce((sum,e)=>sum+(Number(e.amount)||0),0);
   return Math.max(0,Math.round(liters/WATER_GLASS));
 }
@@ -282,6 +283,16 @@ function reduceOneWaterGlass(key=todayKey()){
       if(amt<=0) continue;
       if(amt>WATER_GLASS){
         events[i].amount=+(amt-WATER_GLASS).toFixed(2);
+        // If a scheduled water task is partially reduced, the scheduled task is no longer fully complete.
+        // Keep the remaining actual water as manual-adjust so future uncheck actions don't delete it twice.
+        if(events[i].source==='schedule'&&events[i].taskIndex!==undefined){
+          const taskIndex=events[i].taskIndex;
+          events[i].source='manual-adjust';
+          events[i].id='manual_adjust_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+          delete events[i].taskIndex;
+          if(!state.checked[key]) state.checked[key]={};
+          state.checked[key][taskIndex]=false;
+        }
       } else {
         const removed=events.splice(i,1)[0];
         if(removed?.source==='schedule'&&removed.taskIndex!==undefined){
@@ -1076,47 +1087,54 @@ function renderBookTracker(){
 }
 
 
+function trimReadSessionsToPage(sessions,newPage){
+  newPage=Math.max(0,Number(newPage)||0);
+  const out=[];
+  for(const sess of (sessions||[])){
+    if(sess.type!=='read') continue;
+    const from=Number(sess.from||0),to=Number(sess.to||0);
+    if(newPage>=to){
+      out.push({...sess,pages:Math.max(0,to-from)});
+      continue;
+    }
+    if(newPage>from){
+      out.push({...sess,to:newPage,pages:Math.max(0,newPage-from),corrected:true});
+    }
+    break;
+  }
+  return out.filter(x=>Number(x.pages||0)>0);
+}
+
 function getBookReadingModel(b){
+  const totalPages=Number(b?.totalPages||0)||Infinity;
   const raw=Array.isArray(b.sessions)?b.sessions:[];
+  const legacyCurrent=Math.max(0,Math.min(Number(b.currentPage||0),totalPages));
   if(raw.length===0){
-    const cp=Math.max(0,Math.min(Number(b.currentPage||0),Number(b.totalPages||0)||Infinity));
-    return {sessions:[],readSessions:[],totalRead:cp,currentPage:cp};
+    if(legacyCurrent>0){
+      const legacy={date:b.startDate||todayKey(),from:0,to:legacyCurrent,pages:legacyCurrent,type:'read',legacy:true};
+      return {sessions:[legacy],readSessions:[legacy],totalRead:legacyCurrent,currentPage:legacyCurrent};
+    }
+    return {sessions:[],readSessions:[],totalRead:0,currentPage:0};
   }
   let cur=0;
-  const out=[];
+  let out=[];
   raw.forEach(s=>{
     const date=s.date||todayKey();
     let to=Number(s.to);
     if(!Number.isFinite(to)) return;
-    to=Math.max(0,Math.min(to,Number(b.totalPages||to)));
+    to=Math.max(0,Math.min(to,totalPages));
     if(s.type==='correction'){
-      const last=out[out.length-1];
-      if(last&&last.type==='read'&&cur===last.to&&to>=last.from){
-        last.to=to;
-        last.pages=Math.max(0,to-last.from);
-        last.corrected=true;
-        cur=to;
-        if(last.pages<=0) out.pop();
-      } else {
-        cur=to;
-      }
+      out=trimReadSessionsToPage(out,to);
+      cur=to;
       return;
     }
-    // Read sessions are canonicalized from the current effective page.
     if(to>cur){
-      out.push({date,from:cur,to,pages:to-cur,type:'read',corrected:!!s.corrected});
+      out.push({date,from:cur,to,pages:to-cur,type:'read',corrected:!!s.corrected,legacy:!!s.legacy});
       cur=to;
     } else if(to<cur){
-      const last=out[out.length-1];
-      if(last&&last.type==='read'&&cur===last.to&&to>=last.from){
-        last.to=to;
-        last.pages=Math.max(0,to-last.from);
-        last.corrected=true;
-        cur=to;
-        if(last.pages<=0) out.pop();
-      } else {
-        cur=to;
-      }
+      // Legacy protection: older versions could store a downward update. Treat it as a correction.
+      out=trimReadSessionsToPage(out,to);
+      cur=to;
     }
   });
   const readSessions=out.filter(s=>s.type==='read'&&s.pages>0);
@@ -1362,15 +1380,8 @@ function correctBookPage(bookId){
   if(newPage>oldPage){showToast('Untuk halaman naik, pakai Update.');return;}
   const ok=confirm(`Koreksi progress buku dari halaman ${oldPage} ke ${newPage}?\n\nGunakan ini hanya kalau progress sebelumnya memang salah catat. Ini akan mengubah sesi baca terakhir dan tidak menambah sesi baru.`);
   if(!ok) return;
-  const lastRead=[...b.sessions].map((x,idx)=>({x,idx})).filter(v=>v.x.type==='read').pop();
-  if(lastRead&&newPage>=Number(lastRead.x.from||0)){
-    lastRead.x.to=newPage;
-    lastRead.x.pages=Math.max(0,newPage-Number(lastRead.x.from||0));
-    lastRead.x.corrected=true;
-    if(lastRead.x.pages<=0) b.sessions.splice(lastRead.idx,1);
-  } else {
-    b.sessions.push({date:todayKey(),from:oldPage,to:newPage,pages:0,type:'correction'});
-  }
+  const model=getBookReadingModel(b);
+  b.sessions=trimReadSessionsToPage(model.sessions,newPage);
   b.currentPage=newPage;
   canonicalizeBookSessions(b);
   saveState();updateFloats();refreshBookPopup();showToast('↩️ Koreksi progress disimpan.');
@@ -1761,7 +1772,7 @@ function exportBackup(){
     state.lastBackupAt=exportedAt;
     const payload={
       app:'boneeps',
-      version:9,
+      version:13,
       storageKey:STORAGE_KEY,
       exportedAt,
       data:cloneState()
@@ -1891,17 +1902,18 @@ function initFloatingDrag(){
   const stack=document.querySelector('.float-stack');
   if(!stack) return;
   __floatDragReady=true;
-  let startX=0,startY=0,startLeft=0,startTop=0,dragging=false,pid=null;
+  let startX=0,startY=0,startLeft=0,startTop=0,dragging=false,pid=null,tapAction='';
   stack.addEventListener('pointerdown',e=>{
-    if(e.target.closest('.overlay')) return;
-    pid=e.pointerId;dragging=false;startX=e.clientX;startY=e.clientY;
+    const btn=e.target.closest('.float-btn');
+    if(!btn) return;
+    pid=e.pointerId;dragging=false;tapAction=btn.dataset.floatAction||'';startX=e.clientX;startY=e.clientY;
     const rect=stack.getBoundingClientRect();startLeft=rect.left;startTop=rect.top;
     try{stack.setPointerCapture(pid);}catch(err){}
   });
   stack.addEventListener('pointermove',e=>{
     if(pid!==e.pointerId) return;
     const dx=e.clientX-startX,dy=e.clientY-startY;
-    if(!dragging&&Math.hypot(dx,dy)>8){dragging=true;stack.classList.add('dragging');}
+    if(!dragging&&Math.hypot(dx,dy)>10){dragging=true;stack.classList.add('dragging');}
     if(!dragging) return;
     e.preventDefault();
     const rect=stack.getBoundingClientRect();
@@ -1911,21 +1923,27 @@ function initFloatingDrag(){
     const top=Math.min(maxTop,Math.max(8,startTop+dy));
     state.floatPos={left:Math.round(left),top:Math.round(top)};
     applyFloatPosition();
-  });
+  },{passive:false});
   function finish(e){
     if(pid!==e.pointerId) return;
     try{stack.releasePointerCapture(pid);}catch(err){}
-    pid=null;
-    if(dragging){
+    const wasDragging=dragging;
+    const action=tapAction;
+    pid=null;tapAction='';dragging=false;
+    if(wasDragging){
       window.__floatDragSuppress=true;
-      setTimeout(()=>{window.__floatDragSuppress=false;},350);
+      setTimeout(()=>{window.__floatDragSuppress=false;},250);
       saveState();
       stack.classList.remove('dragging');
+      return;
     }
-    dragging=false;
+    // iOS Safari can swallow the normal click after pointer-capture.
+    // Treat a short pointer gesture as an explicit tap.
+    if(action==='book') toggleBookPopup();
+    else if(action==='rokok') toggleRokokPopup();
   }
-  stack.addEventListener('pointerup',finish);
-  stack.addEventListener('pointercancel',finish);
+  stack.addEventListener('pointerup',finish,{passive:false});
+  stack.addEventListener('pointercancel',finish,{passive:false});
   applyFloatPosition();
 }
 
