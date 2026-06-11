@@ -1,4 +1,4 @@
-const CACHE_NAME='boneeps-v10-4';
+const CACHE_NAME='boneeps-v10-7';
 const APP_SHELL=[
   './',
   './index.html',

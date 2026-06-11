@@ -213,11 +213,16 @@ function progressPct(){return Math.round((completedCount()/SCHEDULE_TODAY.length
 function todayWater(){return state.waterHistory?.[todayKey()]||0;}
 function todayRokok(){return state.rokokHistory?.[todayKey()]||0;}
 
-function saveState(){try{localStorage.setItem('kosProduktif5',JSON.stringify(state));}catch(e){}}
+const STORAGE_KEY='boneepsData_v1';
+const LEGACY_STORAGE_KEY='kosProduktif5';
+
+function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}catch(e){}}
 
 function loadState(){
   try{
-    const raw=localStorage.getItem('kosProduktif5');
+    // Mulai v10.5, boneeps memakai storage key baru.
+    // Legacy key tidak dibaca otomatis agar data test lama dari Kos Produktif tidak ikut muncul.
+    const raw=localStorage.getItem(STORAGE_KEY);
     if(raw){const s=JSON.parse(raw);state={...state,...s};}
   }catch(e){}
   state.mealWeek=((getWeekOfMonth()-1)%4)+1;
@@ -319,9 +324,17 @@ function recalcStreak(){
     const key=dateKey(d);
     const pct=state.history[key];
     const rokok=state.rokokHistory?.[key]??0;
-    if(pct===undefined&&i===0){s=0;break;}
-    if(pct>=80&&rokok<=MAX_ROKOK)s++;
-    else if(i>0)break;
+
+    // Hari ini belum selesai bukan berarti streak kemarin putus.
+    // Kalau hari ini sudah memenuhi syarat, baru ikut dihitung.
+    // Kalau hari ini belum memenuhi syarat, lanjut cek hari kemarin.
+    if(i===0){
+      if(pct>=80&&rokok<=MAX_ROKOK) s++;
+      continue;
+    }
+
+    if(pct>=80&&rokok<=MAX_ROKOK) s++;
+    else break;
   }
   state.streak=s;
 }
@@ -800,7 +813,7 @@ function renderStats(){
   html+=`<div class="section-label">⚙️ Pengaturan</div>
   <div class="card"><div class="card-body">
     <p style="font-size:13px;font-weight:600;margin-bottom:8px">Nama kamu</p>
-    <input class="input-field" id="nameInput" type="text" placeholder="Nama kamu..." value="${state.userName}" maxlength="20">
+    <input class="input-field" id="nameInput" type="text" placeholder="Nama kamu..." value="${escHtml(state.userName||'')}" maxlength="20">
     <div style="display:flex;gap:8px">
       <button class="btn btn-primary" onclick="saveName()" style="flex:1">Simpan</button>
       <button class="btn btn-danger" onclick="resetToday()" style="flex:1">Reset Hari Ini</button>
@@ -1359,8 +1372,9 @@ function closeDetailOverlay(){document.getElementById('prodDetailOverlay').class
 function openProdHistoryDetail(k){
   const rec=getProdRecordForDate(k);
   const pct=prodRecordPct(rec);
-  const doneTasks=(rec.tasks||[]).filter(t=>t.done);
-  const undoneTasks=(rec.tasks||[]).filter(t=>!t.done);
+  const allTasks=(rec.tasks||[]).map((t,idx)=>({...t,__idx:idx}));
+  const doneTasks=allTasks.filter(t=>t.done);
+  const undoneTasks=allTasks.filter(t=>!t.done);
   let html=`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
     <div style="font-size:15px;font-weight:800;margin-bottom:4px">${fmtDate(k).replace('\n',' · ')}</div>
     <div style="font-size:13px;color:var(--text-2)">${rec.done}/${rec.total} task selesai · ${pct}% completion</div>
@@ -1368,19 +1382,53 @@ function openProdHistoryDetail(k){
   if((rec.tasks||[]).length===0){
     html+=`<div class="warning-box">Histori lama ini hanya menyimpan angka, belum menyimpan detail nama task. Detail task akan tersedia untuk hari-hari setelah update ini dipakai.</div>`;
   } else {
+    html+=`<div class="info-box" style="font-size:12px;margin-bottom:12px">Tap salah satu task untuk melihat detail/catatan task itu.</div>`;
     html+=`<div class="section-label" style="margin-top:0">✅ Task Selesai</div>`;
     if(doneTasks.length===0) html+=`<div class="no-items">Tidak ada task selesai pada hari ini.</div>`;
     doneTasks.forEach(t=>{
-      html+=`<div class="prod-item"><div class="prod-item-main"><div class="prod-check done">✓</div><div><div class="prod-text done" style="text-decoration:none;color:var(--text)">${escHtml(t.text)}</div>${t.detail?`<div class="task-detail">${escHtml(t.detail)}</div>`:''}</div></div></div>`;
+      html+=`<div class="prod-item"><div class="prod-item-main" onclick="openProdHistoryTaskDetail('${k}',${t.__idx})" style="cursor:pointer"><div class="prod-check done">✓</div><div style="flex:1"><div class="prod-text done" style="text-decoration:none;color:var(--text)">${escHtml(t.text)}</div>${t.detail?`<div class="task-detail">Ada catatan detail · tap untuk buka</div>`:`<div class="task-detail">Belum ada catatan detail</div>`}</div><span style="font-size:16px;color:var(--text-3)">›</span></div></div>`;
     });
     html+=`<div class="section-label">○ Belum Selesai</div>`;
     if(undoneTasks.length===0) html+=`<div class="no-items">Tidak ada task yang tertinggal.</div>`;
     undoneTasks.forEach(t=>{
-      html+=`<div class="prod-item"><div class="prod-item-main"><div class="prod-check"></div><div><div class="prod-text">${escHtml(t.text)}</div>${t.detail?`<div class="task-detail">${escHtml(t.detail)}</div>`:''}</div></div></div>`;
+      html+=`<div class="prod-item"><div class="prod-item-main" onclick="openProdHistoryTaskDetail('${k}',${t.__idx})" style="cursor:pointer"><div class="prod-check"></div><div style="flex:1"><div class="prod-text">${escHtml(t.text)}</div>${t.detail?`<div class="task-detail">Ada catatan detail · tap untuk buka</div>`:`<div class="task-detail">Belum ada catatan detail</div>`}</div><span style="font-size:16px;color:var(--text-3)">›</span></div></div>`;
     });
   }
   html+=`<button class="btn btn-ghost" style="width:100%;margin-top:6px" onclick="closeDetailOverlay()">Tutup</button>`;
   document.getElementById('prodDetailTitle').textContent='🎯 Detail Produktivitas';
+  document.getElementById('prodDetailBody').innerHTML=html;
+  document.getElementById('prodDetailOverlay').classList.add('open');
+}
+
+function openProdHistoryTaskDetail(k,idx){
+  const rec=getProdRecordForDate(k);
+  const t=(rec.tasks||[])[idx];
+  if(!t) return;
+  const status=t.done?'Selesai':'Belum selesai';
+  const statusIcon=t.done?'✅':'○';
+  const detail=(t.detail||'').trim();
+  const meta=[];
+  if(t.createdAt) meta.push('Dibuat: '+t.createdAt);
+  if(t.completedAt) meta.push('Selesai: '+t.completedAt);
+  if(t.sourceDate) meta.push('Tanggal histori: '+t.sourceDate);
+  let html=`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:4px">${fmtDate(k).replace('\n',' · ')} · ${statusIcon} ${status}</div>
+    <div style="font-size:16px;font-weight:800;line-height:1.35">${escHtml(t.text||'-')}</div>
+  </div>`;
+  if(meta.length>0){
+    html+=`<div style="font-size:12px;color:var(--text-3);line-height:1.7;margin-bottom:10px">${meta.map(escHtml).join('<br>')}</div>`;
+  }
+  html+=`<div class="section-label" style="margin-top:0">Catatan Detail</div>`;
+  if(detail){
+    html+=`<div class="card"><div class="card-body" style="font-size:14px;white-space:pre-wrap;line-height:1.6">${escHtml(detail)}</div></div>`;
+  } else {
+    html+=`<div class="no-items">Belum ada catatan detail untuk task ini.</div>`;
+  }
+  html+=`<div style="display:flex;gap:8px;margin-top:10px">
+    <button class="btn btn-ghost" style="flex:1" onclick="openProdHistoryDetail('${k}')">Kembali</button>
+    <button class="btn btn-primary" style="flex:1" onclick="closeDetailOverlay()">Tutup</button>
+  </div>`;
+  document.getElementById('prodDetailTitle').textContent='Detail Task';
   document.getElementById('prodDetailBody').innerHTML=html;
   document.getElementById('prodDetailOverlay').classList.add('open');
 }
@@ -1420,7 +1468,7 @@ function exportBackup(){
     const payload={
       app:'boneeps',
       version:6,
-      storageKey:'kosProduktif5',
+      storageKey:STORAGE_KEY,
       exportedAt,
       data:cloneState()
     };
@@ -1512,6 +1560,7 @@ function executeResetAll(){
   state.checked={};state.history={};state.streak=0;state.userName='Bos';
   state.rokokHistory={};state.waterHistory={};state.books=[];
   state.todayTasks=[];state.pendingTasks=[];state.tomorrowTasks=[];state.ideas=[];state.prodHistory={};state.prodHistoryShown=5;state.prodStatsPeriod='7';state.bookFinishedShown=5;state.lastBackupAt='';
+  try{localStorage.removeItem(LEGACY_STORAGE_KEY);}catch(e){}
   saveState();closeConfirm();render();showToast('🗑️ Semua data dihapus');
 }
 
