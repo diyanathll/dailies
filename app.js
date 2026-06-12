@@ -2,7 +2,7 @@
 const APP_DISPLAY_NAME='boneeps';
 try{document.title=APP_DISPLAY_NAME;}catch(e){}
 const MAX_ROKOK=5,WATER_TARGET=2.5,WATER_GLASS=0.25,WATER_GLASSES=10;
-const WATER_WARN_HIGH=3.5,WATER_WARN_STRONG=4.0,WATER_WARN_STOP=5.0,WATER_FAST_WARNING=1.0;
+const WATER_WARN_HIGH=3.5,WATER_WARN_STRONG=4.0,WATER_WARN_STOP=5.0;
 const MOTIVASI=["Konsistensi > Motivasi. Lakuin aja, perasaan ikut nanti. 🔥","Orang sukses bukan yang paling berbakat — yang paling konsisten! 🏆","Satu kebiasaan kecil hari ini = kebiasaan besar 3 bulan lagi! 📈","Kamu bukan malas, kamu belum punya sistem. Sekarang kamu punya! ✅","Jangan compare sama orang lain. Compare sama kamu kemarin! 💪","Mulai dari yang kecil, tapi mulai sekarang. 🚀","Done is better than perfect. Selesai lebih baik dari sempurna! 🎯"];
 
 // ============ DATE HELPERS ============
@@ -355,14 +355,11 @@ function setWaterTotalGlasses(targetGlasses){
 }
 function getWaterStatusMessage(key=todayKey()){
   const liters=getWaterLiters(key);
-  const events=getWaterEvents(key);
-  const oneHourAgo=Date.now()-60*60*1000;
-  const recentLiters=events.filter(e=>new Date(e.createdAt||0).getTime()>=oneHourAgo).reduce((a,e)=>a+(Number(e.amount)||0),0);
-  if(recentLiters>=WATER_FAST_WARNING) return {level:'fast',short:'⚠️ Air tercatat ≥1L dalam 1 jam. Jangan minum terlalu cepat.',long:'Terlalu cepat minum bisa berisiko. Beri jeda dan ikuti rasa haus.'};
-  if(liters>=WATER_WARN_STOP) return {level:'stop',short:'⛔ Sudah sangat tinggi. Jangan tambah air lagi kecuali memang perlu/atas arahan medis.',long:'Di atas 5L/hari sudah sangat tinggi untuk tracking normal. Jangan mengejar angka.'};
-  if(liters>=WATER_WARN_STRONG) return {level:'strong',short:'🚨 Sudah tinggi. Jangan minum karena mengejar target.',long:'4L+ sudah tinggi. Pastikan tidak diminum dalam waktu singkat dan jangan memaksa.'};
-  if(liters>=WATER_WARN_HIGH) return {level:'high',short:'⚠️ Di atas target cukup jauh. Ikuti rasa haus.',long:'Di atas 3.5L: lanjut hanya kalau aktivitas/keringat memang tinggi.'};
-  if(liters>=3.0) return {level:'over',short:'💧 Di atas target. Masih wajar kalau aktivitas tinggi.',long:'Target sudah lewat. Tidak perlu memaksa tambah air.'};
+  // Warning air hanya berdasarkan total liter harian, bukan kecepatan minum per jam.
+  if(liters>=WATER_WARN_STOP) return {level:'stop',short:'⛔ 5L+ hari ini. Stop tambah air; jangan mengejar angka.',long:'Di atas 5L/hari sudah sangat tinggi untuk tracking normal. Jangan tambah air lagi kecuali memang perlu/atas arahan medis.'};
+  if(liters>=WATER_WARN_STRONG) return {level:'strong',short:'🚨 4L+ hari ini. Sudah tinggi; jangan memaksa minum.',long:'4L+ sudah tinggi. Jangan memaksa minum hanya untuk mengejar angka.'};
+  if(liters>=WATER_WARN_HIGH) return {level:'high',short:'⚠️ 3.5L+ hari ini. Di atas target cukup jauh.',long:'Di atas 3.5L: lanjut hanya kalau aktivitas/keringat memang tinggi. Ikuti rasa haus.'};
+  if(liters>=3.0) return {level:'over',short:'💧 3L+ hari ini. Di atas target; tidak perlu memaksa.',long:'Target sudah lewat. Masih wajar jika aktivitas tinggi, tapi tidak perlu mengejar angka.'};
   if(liters>=WATER_TARGET) return {level:'done',short:'🎉 Target 2.5L tercapai. Sudah cukup.',long:'Target harian tercapai. Setelah ini cukup minum sesuai haus.'};
   return {level:'normal',short:'💧 '+liters.toFixed(2)+'L / '+WATER_TARGET+'L',long:'Masih dalam target harian.'};
 }
